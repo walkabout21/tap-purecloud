@@ -2,7 +2,6 @@
 
 import argparse
 import requests
-import singer
 import logging
 import base64
 import datetime
@@ -11,6 +10,11 @@ import json
 import backoff
 import hashlib
 import collections
+
+from dateutil.parser import parse
+
+import singer
+from singer import utils
 
 import PureCloudPlatformApiSdk
 import PureCloudPlatformClientV2
@@ -56,14 +60,11 @@ def get_access_token(config):
     auth_host = BASE_PURECLOUD_AUTH_HOST.format(domain=client_domain)
     auth_endpoint = '{}/oauth/token'.format(auth_host)
 
-    client_creds = "{}:{}".format(client_id, client_secret).encode('utf-8')
-    raw_authorization = base64.b64encode(client_creds)
-    authorization = raw_authorization.decode('ascii')
-
+    authorization = base64.b64encode(bytes(client_id + ":" + client_secret, "ISO-8859-1")).decode("ascii")
     body = {'grant_type': 'client_credentials'}
 
     headers = {
-        'Authorization': 'Basic {}'.format(authorization),
+        'Authorization': f'Basic {authorization}',
         'Content-Type': 'application/x-www-form-urlencoded'
     }
 
@@ -639,7 +640,7 @@ def load_state(filename):
 
 
 def parse_input_date(date_string):
-    return datetime.datetime.strptime(date_string, '%Y-%m-%d').date()
+    return parse(date_string)
 
 
 def do_sync(args):
@@ -687,6 +688,7 @@ def do_sync(args):
     singer.write_state(new_state)
 
 
+@utils.handle_top_exception(logger)
 def main():
     parser = argparse.ArgumentParser()
 
@@ -694,14 +696,17 @@ def main():
         '-c', '--config', help='Config file', required=True)
     parser.add_argument(
         '-s', '--state', help='State file')
+    parser.add_argument('-d', '--discover', action='store_true',
+        help='Do schema discovery')
+    parser.add_argument(
+        '--catalog',
+        help='Catalog file')
 
     args = parser.parse_args()
-
-    try:
+    if args.discover:
+        pass
+    else:
         do_sync(args)
-    except RuntimeError:
-        logger.fatal("Run failed.")
-        exit(1)
 
 
 if __name__ == '__main__':
