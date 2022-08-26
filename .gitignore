@@ -1,4 +1,6 @@
-config.json
+config.*json
+target.*json
+catalog.*json
 persist.json
 env
 __pycache__/
@@ -20,3 +22,4 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+venv/

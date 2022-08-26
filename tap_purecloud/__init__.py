@@ -2,7 +2,6 @@
 
 import argparse
 import requests
-import singer
 import logging
 import base64
 import datetime
@@ -11,6 +10,11 @@ import json
 import backoff
 import hashlib
 import collections
+
+from dateutil.parser import parse
+
+import singer
+from singer import utils
 
 import PureCloudPlatformApiSdk
 import PureCloudPlatformClientV2
@@ -31,6 +35,12 @@ BASE_PURECLOUD_AUTH_HOST = 'https://login.{domain}'
 BASE_PURECLOUD_API_HOST = 'https://api.{domain}'
 DEFAULT_SCHEDULE_LOOKAHEAD_WEEKS = 5
 
+REQUIRED_CONFIG_KEYS = [
+    'start_date',
+    'domain',
+    'client_id',
+    'client_secret',
+]
 
 def giveup(error):
     logger.warning("Encountered an error while syncing")
@@ -56,14 +66,11 @@ def get_access_token(config):
     auth_host = BASE_PURECLOUD_AUTH_HOST.format(domain=client_domain)
     auth_endpoint = '{}/oauth/token'.format(auth_host)
 
-    client_creds = "{}:{}".format(client_id, client_secret).encode('utf-8')
-    raw_authorization = base64.b64encode(client_creds)
-    authorization = raw_authorization.decode('ascii')
-
+    authorization = base64.b64encode(bytes(client_id + ":" + client_secret, "ISO-8859-1")).decode("ascii")
     body = {'grant_type': 'client_credentials'}
 
     headers = {
-        'Authorization': 'Basic {}'.format(authorization),
+        'Authorization': f'Basic {authorization}',
         'Content-Type': 'application/x-www-form-urlencoded'
     }
 
@@ -582,71 +589,15 @@ def sync_user_details(config):
 
         first_page = False
 
-
-def validate_config(config):
-    required_keys = ['domain', 'client_id', 'client_secret', 'start_date']
-    missing_keys = []
-    null_keys = []
-    has_errors = False
-
-    for required_key in required_keys:
-        if required_key not in config:
-            missing_keys.append(required_key)
-
-        elif config.get(required_key) is None:
-            null_keys.append(required_key)
-
-    if len(missing_keys) > 0:
-        logger.fatal("Config is missing keys: {}"
-                     .format(", ".join(missing_keys)))
-        has_errors = True
-
-    if len(null_keys) > 0:
-        logger.fatal("Config has null keys: {}"
-                     .format(", ".join(null_keys)))
-        has_errors = True
-
-    if has_errors:
-        raise RuntimeError
-
-
-def load_config(filename):
-    config = {}
-
-    try:
-        with open(filename) as f:
-            config = json.load(f)
-    except Exception as e:
-        logger.fatal("Failed to decode config file. Is it valid json?")
-        logger.fatal(e)
-        raise RuntimeError
-
-    validate_config(config)
-
-    return config
-
-
-def load_state(filename):
-    if filename is None:
-        return {}
-
-    try:
-        with open(filename) as f:
-            return json.load(f)
-    except:
-        logger.fatal("Failed to decode state file. Is it valid json?")
-        raise RuntimeError
-
-
 def parse_input_date(date_string):
-    return datetime.datetime.strptime(date_string, '%Y-%m-%d').date()
+    return parse(date_string)
 
 
 def do_sync(args):
     logger.info("Starting sync.")
 
-    config = load_config(args.config)
-    state = load_state(args.state)
+    config: dict = args.config
+    state: dict = args.state
 
     # grab start date from state file. If not found
     # default to value in config file
@@ -687,22 +638,15 @@ def do_sync(args):
     singer.write_state(new_state)
 
 
+@utils.handle_top_exception(logger)
 def main():
-    parser = argparse.ArgumentParser()
+    parsed_args = singer.utils.parse_args(REQUIRED_CONFIG_KEYS)
 
-    parser.add_argument(
-        '-c', '--config', help='Config file', required=True)
-    parser.add_argument(
-        '-s', '--state', help='State file')
-
-    args = parser.parse_args()
-
-    try:
-        do_sync(args)
-    except RuntimeError:
-        logger.fatal("Run failed.")
-        exit(1)
-
+    if parsed_args.discover:
+        # TODO: Include a method to discover catalogs
+        pass
+    else:
+        do_sync(parsed_args)
 
 if __name__ == '__main__':
     main()

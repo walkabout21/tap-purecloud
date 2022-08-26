@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 import os.path
 
 setup(name='tap-purecloud',
-      version='0.0.6',
+      version='0.0.7',
       description='Singer.io tap for extracting data from the Genesys Purecloud API',
       author='Fishtown Analytics',
       url='http://fishtownanalytics.com',
@@ -15,6 +15,7 @@ setup(name='tap-purecloud',
           'backoff==1.3.2',
           'requests==2.20.0',
           'python-dateutil==2.6.0',
+          'pytz==2020.5', # Pin to fuji
           'PureCloudPlatformApiSdk==0.45.1.101',
           'PureCloudPlatformClientV2==26.0.0',
           'websockets==5.0.1'
