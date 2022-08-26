@@ -11,7 +11,7 @@ import backoff
 import hashlib
 import collections
 
-from dateutil.parser import parse
+from dateutil.parser import parse as parse_datetime
 
 import singer
 from singer import utils
@@ -589,9 +589,21 @@ def sync_user_details(config):
 
         first_page = False
 
-def parse_input_date(date_string):
-    return parse(date_string)
-
+def parse_to_date(date_string: str) -> 'datetime.date':
+    """
+    Tries to parse the date_string to date
+    Otherwise raises a TypeError or ValueError
+    """
+    try:
+        # Arbitrarily chosen, just needs to be type datetime.date
+        # as successful conversion will replace these
+        temp_date = datetime.date(1, 1, 1)
+        return parse_datetime(date_string, default=temp_date)
+    except (TypeError, ValueError):
+        pass
+    # Failing the conversion to date means it could be datetime instead
+    as_datetime = parse_datetime(date_string)
+    return as_datetime.date()
 
 def do_sync(args):
     logger.info("Starting sync.")
@@ -603,9 +615,9 @@ def do_sync(args):
     # default to value in config file
 
     if 'start_date' in state:
-        start_date = parse_input_date(state['start_date'])
+        start_date = parse_to_date(state['start_date'])
     else:
-        start_date = parse_input_date(config['start_date'])
+        start_date = parse_to_date(config['start_date'])
 
     logger.info("Syncing data from: {}".format(start_date))
 
