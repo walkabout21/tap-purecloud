@@ -1,4 +1,6 @@
-config.json
+config.*json
+target.*json
+catalog.*json
 persist.json
 env
 __pycache__/
