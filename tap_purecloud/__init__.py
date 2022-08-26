@@ -326,9 +326,9 @@ def sync_user_schedules(config, unit_id, user_ids, first_page):
     logger.info("Fetching user schedules")
     api_instance = PureCloudPlatformApiSdk.WorkforceManagementApi()
 
-    sync_date = config['start_date']
+    sync_date: 'datetime.date' = config['start_date']
     lookahead_weeks = config.get('schedule_lookahead_weeks', DEFAULT_SCHEDULE_LOOKAHEAD_WEEKS)
-    end_date = datetime.date.today() + datetime.timedelta(weeks=lookahead_weeks)
+    end_date: 'datetime.date' = datetime.date.today() + datetime.timedelta(weeks=lookahead_weeks)
     incr = datetime.timedelta(days=1)
 
     while sync_date < end_date:
@@ -391,9 +391,9 @@ def get_user_unit_mapping(users):
 
 def sync_historical_adherence(config, unit_id, users, first_page):
 
-    sync_date = config['start_date']
+    sync_date: 'datetime.date' = config['start_date']
 
-    end_date = datetime.date.today()
+    end_date: 'datetime.date' = datetime.date.today()
     incr = datetime.timedelta(days=1)
 
     sync_date = sync_date - incr
@@ -476,8 +476,8 @@ def sync_conversations(config):
     logger.info("Fetching conversations")
     api_instance = PureCloudPlatformApiSdk.ConversationsApi()
 
-    sync_date = config['start_date']
-    end_date = datetime.date.today() + datetime.timedelta(days=1)
+    sync_date: 'datetime.date' = config['start_date']
+    end_date: 'datetime.date' = datetime.date.today() + datetime.timedelta(days=1)
     incr = datetime.timedelta(days=1)
 
     first_page = True
@@ -565,8 +565,8 @@ def sync_user_details(config):
     logger.info("Fetching user details")
     api_instance = PureCloudPlatformApiSdk.UsersApi()
 
-    sync_date = config['start_date']
-    end_date = datetime.date.today() + datetime.timedelta(days=1)
+    sync_date: 'datetime.date' = config['start_date']
+    end_date: 'datetime.date' = datetime.date.today() + datetime.timedelta(days=1)
     incr = datetime.timedelta(days=1)
 
     first_page = True
