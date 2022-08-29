@@ -10,15 +10,17 @@ import json
 import backoff
 import hashlib
 import collections
+import os
 
 from dateutil.parser import parse as parse_datetime
 
 import singer
-from singer import utils
+from singer import utils, metadata
+from singer.catalog import Catalog, CatalogEntry
+from singer.schema import Schema
 
 import PureCloudPlatformApiSdk
 import PureCloudPlatformClientV2
-from PureCloudPlatformApiSdk.rest import ApiException
 
 import tap_purecloud.schemas as schemas
 import tap_purecloud.websocket_helper
@@ -650,13 +652,61 @@ def do_sync(args):
     singer.write_state(new_state)
 
 
+def get_abs_path(path):
+    return os.path.join(os.path.dirname(os.path.realpath(__file__)), path)
+
+
+def load_schemas() -> dict:
+    """ Load schemas from schemas folder """
+    schemas = {}
+    for filename in os.listdir(get_abs_path('schemas')):
+        path = os.path.join(get_abs_path('schemas'), filename)
+        file_raw = filename.replace('.json', '')
+        with open(path) as file:
+            schemas[file_raw] = Schema.from_dict(json.load(file))
+    return schemas
+
+
+def discover():
+    raw_schemas = load_schemas()
+    streams = []
+    for stream_id, schema in raw_schemas.items():
+        key_properties = ['id']
+        valid_replication_keys = None
+        stream_metadata = metadata.get_standard_metadata(
+            schema=schema.to_dict(),
+            key_properties=key_properties,
+            valid_replication_keys=valid_replication_keys,
+            replication_method=None
+        )
+        streams.append(
+            CatalogEntry(
+                tap_stream_id=stream_id,
+                stream=stream_id,
+                schema=schema,
+                key_properties=key_properties,
+                metadata=stream_metadata,
+                replication_key=None,
+                is_view=None,
+                database=None,
+                table=None,
+                row_count=None,
+                stream_alias=None,
+                replication_method=None,
+            )
+        )
+    return Catalog(streams)
+
+def stream_is_selected(mdata):
+    return mdata.get((), {}).get('selected', False)
+
 @utils.handle_top_exception(logger)
 def main():
     parsed_args = singer.utils.parse_args(REQUIRED_CONFIG_KEYS)
 
     if parsed_args.discover:
-        # TODO: Include a method to discover catalogs
-        pass
+        catalog = discover()
+        catalog.dump()
     else:
         do_sync(parsed_args)
 
