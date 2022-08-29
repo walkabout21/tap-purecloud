@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "email": {
+            "type": "string",
+            "description": "email for the user"
+        },
+        "id": {
+            "type": "string",
+            "description": "id for the user"
+        },
+        "name": {
+            "type": "string",
+            "description": "name for the user"
+        },
+        "username": {
+            "type": "string",
+            "description": "username for the user"
+        }
+    }
+}
