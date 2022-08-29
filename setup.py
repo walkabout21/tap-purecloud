@@ -22,5 +22,9 @@ setup(name='tap-purecloud',
           [console_scripts]
           tap-purecloud=tap_purecloud:main
       ''',
-      packages=['tap_purecloud']
+      packages=['tap_purecloud'],
+      package_data={
+        'schemas': ['tap_purecloud/schemas/*.json']
+      },
+      include_package_data=True,
 )
