@@ -1,0 +1,17 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string",
+            "name": "id for the user membership in this queue"
+        },
+        "queue_id": {
+            "type": "string",
+            "name": "id for the queue"
+        },
+        "user_id": {
+            "type": "string",
+            "name": "user id for this queue"
+        }
+    }
+}

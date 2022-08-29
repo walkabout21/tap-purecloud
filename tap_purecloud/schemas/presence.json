@@ -1,0 +1,27 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "language_labels": {
+            "type": "object",
+            "properties": {
+                "en_US": {
+                    "type": "string",
+                    "description": "English presence label"
+                }
+            }
+        },
+        "created_date": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "presence creation date"
+        },
+        "modified_date": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "presence modification date"
+        }
+    }
+}

@@ -1,16 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "email": {
+        "name": {
             "type": "string"
         },
         "id": {
             "type": "string"
         },
-        "name": {
+        "state": {
             "type": "string"
         },
-        "username": {
+        "visibility": {
             "type": "string"
         }
     }
