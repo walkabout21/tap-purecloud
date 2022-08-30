@@ -81,13 +81,13 @@ class FakeBody(object):
 
 def fetch_one_page(get_records, body, entity_name, api_function_params):
     if isinstance(body, FakeBody):
-        logger.info("Fetching {} records from page {}".format(body.page_size, body.page_number))
+        # logger.info("Fetching {} records from page {}".format(body.page_size, body.page_number))
         response = get_records(page_size=body.page_size, page_number=body.page_number, **api_function_params)
     elif hasattr(body, 'page_size'):
-        logger.info("Fetching {} records from page {}".format(body.page_size, body.page_number))
+        # logger.info("Fetching {} records from page {}".format(body.page_size, body.page_number))
         response = get_records(body, **api_function_params)
     elif hasattr(body, 'paging'):
-        logger.info("Fetching {} records from page {}".format(body.paging['pageSize'], body.paging['pageNumber']))
+        # logger.info("Fetching {} records from page {}".format(body.paging['pageSize'], body.paging['pageNumber']))
         response = get_records(body, **api_function_params)
     else:
         raise RuntimeError("Unknown body passed to request: {}".format(body))
@@ -585,9 +585,7 @@ def parse_to_date(date_string: str) -> 'datetime.date':
     as_datetime = parse_datetime(date_string)
     return as_datetime.date()
 
-def do_sync(args):
-    logger.info("Starting sync.")
-
+def do_sync(args):    
     config: dict = args.config
     state: dict = args.state
 
@@ -612,7 +610,7 @@ def do_sync(args):
         client_secret=config['client_secret']
     )
 
-    logger.info(f"Successfully got access token. Syncing data from: {start_date}")
+    logger.info(f"Successfully got access token. Starting sync from {start_date}")
     
     sync_users(api_client)
     sync_groups(api_client)
