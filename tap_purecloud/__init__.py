@@ -137,7 +137,7 @@ def fetch_all_analytics_records(get_records, body, entity_name, max_pages=None):
     api_function_params = {}
 
     body.paging = {
-        "pageSize": 100,
+        "pageSize": 1000, # Increase the page size since there can be lots of records
         "pageNumber": 1
     }
 
@@ -336,7 +336,8 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
 def sync_wfm_historical_adherence(api_instance: WorkforceManagementApi, config, unit_id, users, body):
     # The ol' Python pass-by-reference
     result_reference = {}
-    wfm_notifcation_thread = get_historical_adherence(api_instance, config, result_reference)
+    api_client = api_instance.api_client
+    wfm_notifcation_thread = get_historical_adherence(api_client, config, result_reference)
 
     # give the webhook a chance to get settled
     logger.info("Waiting for websocket to settle")
@@ -371,7 +372,7 @@ def get_user_unit_mapping(users):
 
 def sync_historical_adherence(api_instance: WorkforceManagementApi, config, unit_id, users, first_page):
 
-    sync_date: 'datetime.date' = config['start_date']
+    sync_date: 'datetime.date' = config['_sync_date']
 
     end_date: 'datetime.date' = datetime.date.today()
     incr = datetime.timedelta(days=1)
@@ -420,7 +421,7 @@ def sync_management_units(api_client: ApiClient, config):
 
         # don't allow args here
         getter = lambda *args, **kwargs: api_instance.get_workforcemanagement_managementunit_users(unit_id)
-        gen_users = fetch_all_records(getter, 'entities', FakeBody(), max_pages=1)
+        gen_users = fetch_all_records(getter, 'entities', FakeBody(page_size=1000), max_pages=1)
         users = stream_results(gen_users, handle_mgmt_users(unit_id), 'management_unit_users', schemas.management_unit_users, ['user_id', 'management_unit_id'], first_page)
 
         user_ids = [user['user_id'] for user in users]

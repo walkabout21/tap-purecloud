@@ -32,8 +32,7 @@ async def get_websocket_msg(uri):
         raise RuntimeError("Did not find expected message")
 
 
-def get_historical_adherence(api_instance, config, result_reference):
-    api_client = api_instance.api_client
+def get_historical_adherence(api_client, config, result_reference):
     notif_api_instance = NotificationsApi(api_client)
     api_response = notif_api_instance.post_notifications_channels()
 
@@ -50,7 +49,7 @@ def get_historical_adherence(api_instance, config, result_reference):
         asyncio.set_event_loop(loop)
         func = get_websocket_msg(websocket_uri)
         val = loop.run_until_complete(func)
-        result_reference.update(val)
+        res.update(val)
 
     websocket_uri = api_response.connect_uri
     loop = asyncio.get_event_loop()
