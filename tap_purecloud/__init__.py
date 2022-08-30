@@ -32,7 +32,7 @@ from PureCloudPlatformClientV2.api_client import ApiClient
 from PureCloudPlatformClientV2.rest import ApiException as PureCloudApiException
 
 import tap_purecloud.schemas as schemas
-import tap_purecloud.websocket_helper
+from tap_purecloud.websocket_helper import get_historical_adherence
 from tap_purecloud.util import safe_json_serialize_deserialize
 
 logger = singer.get_logger()
@@ -336,7 +336,7 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
 def sync_wfm_historical_adherence(api_instance: WorkforceManagementApi, config, unit_id, users, body):
     # The ol' Python pass-by-reference
     result_reference = {}
-    wfm_notifcation_thread = tap_purecloud.websocket_helper.get_historical_adherence(config, result_reference)
+    wfm_notifcation_thread = get_historical_adherence(api_instance, config, result_reference)
 
     # give the webhook a chance to get settled
     logger.info("Waiting for websocket to settle")
