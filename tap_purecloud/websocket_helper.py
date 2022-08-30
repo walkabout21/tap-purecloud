@@ -23,8 +23,7 @@ async def get_websocket_msg(uri):
             data = json.loads(resp)
             body = data.get('eventBody', {})
 
-            logger.info("GOT WEBSOCKET DATA")
-            logger.info(body)
+            logger.info("Got websocket data")
 
             if body.get('id'):
                 return body
@@ -43,7 +42,6 @@ def get_historical_adherence(api_client, config, result_reference):
     topic.id = channel_id
 
     notif_api_instance.post_notifications_channel_subscriptions(api_response.id, [topic])
-    logger.info("Listening on topic {}".format(channel_id))
 
     def loop_in_thread(loop, websocket_uri, res):
         asyncio.set_event_loop(loop)
