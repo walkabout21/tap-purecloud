@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string",
+            "name": "id for the wrapup code in this queue"
+        }
+    }
+}

@@ -1,0 +1,17 @@
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        },
+        "visibility": {
+            "type": "string"
+        }
+    }
+}

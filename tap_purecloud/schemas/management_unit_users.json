@@ -1,0 +1,11 @@
+{
+    "type": "object",
+    "properties": {
+        "management_unit_id": {
+            "type": "string"
+        },
+        "user_id": {
+            "type": "string"
+        }
+    }
+}

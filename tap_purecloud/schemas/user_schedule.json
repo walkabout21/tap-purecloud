@@ -1,0 +1,37 @@
+{
+    "type": "object",
+    "properties": {
+        "user_id": {
+            "type": "string"
+        },
+        "start_date": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "date for the sync"
+        },
+        "shifts": {
+            "type": ["array", "null"],
+            "items": {
+                "type": "object",
+                "properties": {
+                    "start_date": {
+                        "type": ["string", "null"],
+                        "format": "date-time",
+                        "description": "date for the shift"
+                    },
+                    "activities": {
+                        "type": ["array", "null"],
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "activity_code_id": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

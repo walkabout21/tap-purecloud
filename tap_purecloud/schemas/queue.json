@@ -1,0 +1,27 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string",
+            "name": "queue id"
+        },
+        "name": {
+            "type": "string",
+            "name": "queue name"
+        },
+        "member_count": {
+            "type": "number",
+            "name": "queue member count"
+        },
+        "created_date": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "queue creation date"
+        },
+        "modified_date": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "queue modification date"
+        }
+    }
+}

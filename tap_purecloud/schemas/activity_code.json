@@ -1,0 +1,17 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "management_unit_id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "category": {
+            "type": "string"
+        }
+    }
+}
