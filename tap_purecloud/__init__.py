@@ -137,7 +137,7 @@ def fetch_all_analytics_records(get_records, body, entity_name, max_pages=None):
     api_function_params = {}
 
     body.paging = {
-        "pageSize": 1000, # Increase the page size since there can be lots of records
+        "pageSize": 100, # Limit to 100 as the page size can't be larger
         "pageNumber": 1
     }
 
