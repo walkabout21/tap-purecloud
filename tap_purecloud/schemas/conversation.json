@@ -13,51 +13,6 @@
             "type": ["string", "null"],
             "format": "date-time",
             "description": "end timestamp for the conversation"
-        },
-
-        "participants": {
-            "type": ["array", "null"],
-            "items": {
-                "type": "object",
-                "properties": {
-                    "participant_id": {
-                        "type": "string"
-                    },
-                    "participant_name": {
-                        "type": ["string", "null"]
-                    },
-                    "sessions": {
-                        "type": ["array", "null"],
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "session_id": {
-                                    "type": "string"
-                                },
-                                "segments": {
-                                    "type": ["array", "null"],
-                                    "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "session_id": {
-                                                "type": "string"
-                                            },
-                                            "segment_start": {
-                                                "type": ["string", "null"],
-                                                "format": "date-time"
-                                            },
-                                            "segment_end": {
-                                                "type": ["string", "null"],
-                                                "format": "date-time"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
