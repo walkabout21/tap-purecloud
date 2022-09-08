@@ -125,61 +125,6 @@ location = {
 }
 
 
-segment = {
-    'type': 'object',
-    'properties': {
-        'session_id': {
-            'type': 'string',
-            'description': 'id for the session',
-        },
-        'segment_start': {
-            'type': ['string', 'null'],
-            'format': 'date-time',
-            'description': 'start datetime for the segment',
-        },
-        'segment_end': {
-            'type': ['string', 'null'],
-            'format': 'date-time',
-            'description': 'end datetime for the segment',
-        }
-    }
-}
-
-
-session = {
-    'type': 'object',
-    'properties': {
-        'session_id': {
-            'type': 'string',
-            'description': 'id for the session',
-        },
-        'segments': {
-            'type': ['array', 'null'],
-            'items': segment
-        }
-    }
-}
-
-
-participant = {
-    'type': 'object',
-    'properties': {
-        'participant_id': {
-            'type': 'string',
-            'description': 'id for the participant',
-        },
-        'participant_name': {
-            'type': ['string', 'null'],
-            'description': 'name for the participant',
-        },
-        'sessions': {
-            'type': ['array', 'null'],
-            'items': session
-        }
-    }
-}
-
-
 conversation = {
     'type': 'object',
     'properties': {
@@ -196,15 +141,76 @@ conversation = {
             'type': ['string', 'null'],
             'format': 'date-time',
             'description': 'end timestamp for the conversation',
-        },
-
-        'participants': {
-            'type': ['array', 'null'],
-            'items': participant
         }
     }
 }
 
+conversation_participant = {
+   'type': 'object', 
+   'properties': {
+        'conversation_id': {
+            'type': 'string',
+            'description': 'id for the conversation'
+        },
+        'participant_id': {
+            'type': 'string',
+            'description': 'id for the participant'
+        },
+        'participant_name': {
+            'type': ['string', 'null'],
+            'description': 'name for the participant'
+        }
+   }
+}
+
+conversation_participant_session = {
+    'type': 'object', 
+    'properties': {
+        'conversation_id': {
+            'type': 'string',
+            'description': 'id for the conversation'
+        },
+        'participant_id': {
+            'type': 'string',
+            'description': 'id for the participant'
+        },
+        'session_id': {
+            'type': 'string',
+            'description': 'id for the session'
+        },
+        'direction': {
+            'type': 'string'
+        }
+    }
+}
+
+conversation_participant_session_segment = {
+    'type': 'object', 
+    'properties': {
+        'conversation_id': {
+            'type': 'string',
+            'description': 'id for the conversation'
+        },
+        'participant_id': {
+            'type': 'string',
+            'description': 'id for the participant'
+        },
+        'session_id': {
+            'type': 'string',
+            'description': 'id for the session'
+        },
+        'segment_start': {
+            'type': ['string', 'null'],
+            'format': 'date-time',
+            'description': 'start datetime for the segment'
+        },
+        'segment_end': {
+            'type': ['string', 'null'],
+            'format': 'date-time',
+            'description': 'end datetime for the segment'
+        }
+    }
+}
 
 user_state = {
     'type': 'object',

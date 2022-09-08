@@ -1,0 +1,17 @@
+{
+    "type": "object",
+    "properties": {
+        "conversation_id": {
+            "type": "string",
+            "description": "id for the conversation"
+        },
+        "participant_id": {
+            "type": "string",
+            "description": "id for the participant"
+        },
+        "participant_name": {
+            "type": ["string", "null"],
+            "description": "name for the participant"
+        }
+    }
+}

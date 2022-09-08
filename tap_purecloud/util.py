@@ -11,3 +11,12 @@ def safe_json_serialize_deserialize(data: any, **kwargs) -> dict:
     """
     json_string = json.dumps(data, default=str, **kwargs)
     return json.loads(json_string)
+
+def handle_and_filter_page(page_of_records: list, handler: callable) -> list:
+    valid_records = []
+    for record in page_of_records:
+        data = handler(record)
+        if data is not None:
+            valid_records.append(data)
+
+    return valid_records
