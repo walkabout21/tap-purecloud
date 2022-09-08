@@ -12,6 +12,12 @@
         "participant_name": {
             "type": ["string", "null"],
             "description": "name for the participant"
+        },
+        "flagged_reason": {
+            "type": ["string", "null"]
+        },
+        "purpose": {
+            "type": ["string", "null"]
         }
     }
 }

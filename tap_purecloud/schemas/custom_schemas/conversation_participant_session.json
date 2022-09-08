@@ -15,6 +15,24 @@
         },
         "direction": {
             "type": "string"
+        },
+        "media_type": {
+            "type": ["string", "null"]
+        },
+        "message_type": {
+            "type": ["string", "null"]
+        },
+        "outbound_campaign_id": {
+            "type": ["string", "null"]
+        },
+        "provider": {
+            "type": ["string", "null"]
+        },
+        "recording": {
+            "type": ["boolean", "null"]
+        },
+        "selected_agent_id": {
+            "type": ["string", "null"]
         }
     }
 }
