@@ -326,7 +326,7 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
 
     sync_date: 'datetime.date' = config['_sync_date']
     lookahead_weeks = config.get('schedule_lookahead_weeks', DEFAULT_SCHEDULE_LOOKAHEAD_WEEKS)
-    end_date: 'datetime.date' = datetime.date.today() + datetime.timedelta(weeks=0)
+    end_date: 'datetime.date' = datetime.date.today() + datetime.timedelta(weeks=lookahead_weeks)
     incr = datetime.timedelta(days=1)
     entity_names = ('user_schedules', )
 
