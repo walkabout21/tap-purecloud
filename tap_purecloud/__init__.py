@@ -12,6 +12,7 @@ import hashlib
 import collections
 import os
 
+from typing import Any, Dict, Tuple
 from dateutil.parser import parse as parse_datetime
 
 import singer
@@ -79,7 +80,7 @@ class FakeBody(object):
                       giveup=giveup,
                       interval=API_RETRY_INTERVAL_SECONDS)
 
-def fetch_one_page(get_records, body, entity_names: tuple, api_function_params) -> dict:
+def fetch_one_page(get_records, body, entity_names: tuple, api_function_params) -> Tuple[Any, Dict[str, list]]:
     if isinstance(body, FakeBody):
         # logger.info("Fetching {} records from page {}".format(body.page_size, body.page_number))
         response = get_records(page_size=body.page_size, page_number=body.page_number, **api_function_params)
@@ -104,23 +105,22 @@ def fetch_one_page(get_records, body, entity_names: tuple, api_function_params) 
     return response, results
 
 
-def should_continue(api_response, body, entity_names: tuple) -> bool:
+def should_continue(api_response, body: FakeBody, entity_names: tuple) -> bool:
     has_data_for_entities = []
     for entity_name in entity_names:
         records = getattr(api_response, entity_name, [])
         if not records:
             has_data_for_entities.append(False)
-        elif type(body) == FakeBody and hasattr(api_response, 'page_count') and body.page_number >= api_response.page_count:
-            has_data_for_entities.append(False)
-        elif hasattr(api_response, 'total_hits') and body.paging['pageSize'] * body.paging['pageNumber'] >= api_response.total_hits:
+        elif hasattr(api_response, 'page_count') and body.page_number >= api_response.page_count:
             has_data_for_entities.append(False)
         else:
-            logger.info(f"num records {entity_name} {len(records)}, {records[len(records)-1]}")
             has_data_for_entities.append(True)
+    # Some entities might not have data, but others might so check that atleast one entity
+    # has data so that we can continue to fetch more
     return any(has_data_for_entities)
 
 
-def fetch_all_records(get_records, entity_names: tuple, body, api_function_params=None, max_pages=None):
+def fetch_all_records(get_records, entity_names: tuple, body, api_function_params=None, max_pages=None) -> Dict[str, list]:
     if api_function_params is None:
         api_function_params = {}
 
@@ -132,23 +132,23 @@ def fetch_all_records(get_records, entity_names: tuple, body, api_function_param
 
     while should_continue(api_response, body, entity_names) and body.page_number != max_pages:
         body.page_number += 1
-
         api_response, results = fetch_one_page(get_records, body, entity_names, api_function_params)
         yield results
 
 
-def fetch_all_analytics_records(get_records, body, entity_names: tuple, max_pages=None):
+def fetch_all_analytics_records(get_records, body, entity_names: tuple, max_pages=None) -> Dict[str, list]:
     api_function_params = {}
 
     body.paging = {
         "pageSize": 100, # Limit to 100 as the page size can't be larger
-        "pageNumber": 70
+        "pageNumber": 1
     }
 
     api_response, results = fetch_one_page(get_records, body, entity_names, api_function_params)
     yield results
-    
-    while should_continue(api_response, body, entity_names) and body.paging['pageNumber'] != max_pages:
+
+    # Also check that there is some entity that has data to continue
+    while any(len(results[entity_name]) > 0 for entity_name in entity_names) and body.paging['pageNumber'] != max_pages:
         body.paging['pageNumber'] += 1
         api_response, results = fetch_one_page(get_records, body, entity_names, api_function_params)
         yield results
@@ -428,8 +428,6 @@ def sync_management_units(api_client: ApiClient, config):
     mgmt_units = stream_results(gen_units, ('entities', ), lambda x: x, 'management_unit', schemas.management_unit, ['id'], True)
 
     for i, unit in enumerate(mgmt_units):
-        if i != 0:
-            continue
         logger.info("Syncing mgmt unit {} of {}".format(i + 1, len(mgmt_units)))
         first_page = (i == 0)
         unit_id = unit['id']
@@ -477,9 +475,8 @@ def sync_conversations(api_client: ApiClient, config):
             api_instance.post_analytics_conversations_details_query, body, ('aggregations', 'conversations')
         )
 
-        for q, page in enumerate(gen_conversations, start=1):
-            aggregations = handle_and_filter_page(page['aggregations'], handle_object)
-            logger.info(f"len aggregations {len(aggregations)}, page_num {q+70}")
+        for page_num, page in enumerate(gen_conversations, start=1):
+            aggregations = handle_and_filter_page(page['aggregations'], handle_object) # Aggregations is always empty?
             conversations = handle_and_filter_page(page['conversations'], handle_object)
 
             # Handle deeply nested objects by separating them into different tables, keyed by the parent identifier
@@ -682,15 +679,15 @@ def do_sync(args):
     logger.info(f"Successfully got access token. Starting sync from {start_date}")
     
     # https://developer.genesys.cloud/devapps/sdk/docexplorer/purecloudpython/
-    # sync_users(api_client)
-    # sync_groups(api_client)
-    # sync_locations(api_client)
-    # sync_presence_definitions(api_client)
-    # sync_queues(api_client)
+    sync_users(api_client)
+    sync_groups(api_client)
+    sync_locations(api_client)
+    sync_presence_definitions(api_client)
+    sync_queues(api_client)
 
-    # sync_management_units(api_client, config)
+    sync_management_units(api_client, config)
     sync_conversations(api_client, config)
-    # sync_user_details(api_client, config)
+    sync_user_details(api_client, config)
 
     new_state = {
         'start_date': datetime.date.today().strftime('%Y-%m-%d')
