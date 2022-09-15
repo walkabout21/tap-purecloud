@@ -33,7 +33,7 @@ from PureCloudPlatformClientV2.rest import ApiException as PureCloudApiException
 
 import tap_purecloud.schemas as schemas
 from tap_purecloud.websocket_helper import get_historical_adherence
-from tap_purecloud.util import safe_json_serialize_deserialize
+from tap_purecloud.util import safe_json_serialize_deserialize, handle_and_filter_page
 
 logger = singer.get_logger()
 
@@ -150,7 +150,7 @@ def fetch_all_analytics_records(get_records, body, entity_name, max_pages=None):
         yield results
 
 
-def parse_dates(record):
+def parse_dates(record: dict) -> dict:
     parsed = record.copy()
     for (k,v) in record.items():
         if isinstance(v, datetime.datetime):
@@ -158,7 +158,7 @@ def parse_dates(record):
     return parsed
 
 
-def handle_object(obj):
+def handle_object(obj: dict) -> dict:
     return parse_dates(obj.to_dict())
 
 
@@ -445,27 +445,6 @@ def sync_management_units(api_client: ApiClient, config):
         sync_historical_adherence(api_instance, config, unit_id, unit_users[unit_id], first_page)
 
 
-def handle_conversation(conversation_record):
-    conversation = handle_object(conversation_record)
-
-    participants = []
-    for participant_record in conversation_record.participants:
-        participants.append(handle_object(participant_record))
-
-        sessions = []
-        for session_record in participant_record.sessions:
-            sessions.append(handle_object(session_record))
-
-            segments = []
-            for segment_record in session_record.segments:
-                segments.append(handle_object(segment_record))
-
-            sessions[-1]['segments'] = segments
-        participants[-1]['sessions'] = sessions
-    conversation['participants'] = participants
-    return safe_json_serialize_deserialize(conversation)
-
-
 def sync_conversations(api_client: ApiClient, config):
     logger.info("Fetching conversations")
     api_instance = ConversationsApi(api_client)
@@ -487,12 +466,69 @@ def sync_conversations(api_client: ApiClient, config):
         body.order = "asc"
         body.orderBy = "conversationStart"
 
-        gen_conversations = fetch_all_analytics_records(api_instance.post_analytics_conversations_details_query, body, 'conversations')
-        stream_results(gen_conversations, handle_conversation, 'conversation', schemas.conversation, ['conversation_id'], first_page)
+        gen_conversations = fetch_all_analytics_records(
+            api_instance.post_analytics_conversations_details_query, body, 'conversations'
+        )
+
+        for conversation_page in gen_conversations:
+            conversations = handle_and_filter_page(conversation_page, handle_object)
+
+            # Handle deeply nested objects by separating them into different tables, keyed by the parent identifier
+            for i, conversation in enumerate(conversations):
+                conversation_id = conversation['conversation_id']
+                if first_page and i == 0:
+                    singer.write_schema('conversation', schemas.conversation, ['conversation_id'])
+
+                participants = conversation.pop('participants', [])
+                singer.write_record('conversation', conversation)
+                for j, participant in enumerate(participants):
+                    participant_id = participant['participant_id']
+                    participant['conversation_id'] = conversation_id
+                    write_conversation_participant_schema = first_page and i == 0 and j == 0
+                    if write_conversation_participant_schema:
+                        singer.write_schema(
+                            'conversation_participant',
+                            schemas.conversation_participant,
+                            ['conversation_id', 'participant_id']
+                        )
+
+                    sessions = participant.pop('sessions', [])
+                    singer.write_record('conversation_participant', participant)
+                    for k, session in enumerate(sessions):
+                        session_id = session['session_id']
+                        session['conversation_id'] = conversation_id
+                        session['participant_id'] = participant_id
+                        write_conversation_participant_session_schema = (
+                            first_page and i == 0 and j == 0 and k == 0
+                        )
+                        if write_conversation_participant_schema:
+                            singer.write_schema(
+                                'conversation_participant_session',
+                                schemas.conversation_participant_session,
+                                ['conversation_id', 'participant_id', 'session_id']
+                            )
+
+                        segments = session.pop('segments', [])
+                        singer.write_record('conversation_participant_session', session)
+                        for l, segment in enumerate(segments):
+                            segment['conversation_id'] = conversation_id
+                            segment['participant_id'] = participant_id
+                            segment['session_id'] = session_id
+
+                            write_conversation_participant_session_segment_schema = (
+                                first_page and i == 0 and j == 0 and k == 0 and l == 0
+                            )
+                            if write_conversation_participant_session_segment_schema:
+                                singer.write_schema(
+                                    'conversation_participant_session_segment',
+                                    schemas.conversation_participant_session_segment,
+                                    ['conversation_id', 'participant_id', 'session_id', 'segment_end']
+                                )
+                            singer.write_record('conversation_participant_session_segment', segment)
+
+            first_page = False
 
         sync_date = next_date
-        first_page = False
-
 
 def md5(s):
     hasher = hashlib.md5()
@@ -624,6 +660,7 @@ def do_sync(args):
 
     logger.info(f"Successfully got access token. Starting sync from {start_date}")
     
+    # https://developer.genesys.cloud/devapps/sdk/docexplorer/purecloudpython/
     sync_users(api_client)
     sync_groups(api_client)
     sync_locations(api_client)

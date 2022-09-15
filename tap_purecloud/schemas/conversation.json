@@ -14,50 +14,26 @@
             "format": "date-time",
             "description": "end timestamp for the conversation"
         },
-
-        "participants": {
+        "division_ids": {
             "type": ["array", "null"],
             "items": {
-                "type": "object",
-                "properties": {
-                    "participant_id": {
-                        "type": "string"
-                    },
-                    "participant_name": {
-                        "type": ["string", "null"]
-                    },
-                    "sessions": {
-                        "type": ["array", "null"],
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "session_id": {
-                                    "type": "string"
-                                },
-                                "segments": {
-                                    "type": ["array", "null"],
-                                    "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "session_id": {
-                                                "type": "string"
-                                            },
-                                            "segment_start": {
-                                                "type": ["string", "null"],
-                                                "format": "date-time"
-                                            },
-                                            "segment_end": {
-                                                "type": ["string", "null"],
-                                                "format": "date-time"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                "type": "string"
             }
+        },
+        "conversation_initiator": {
+            "type": ["string", "null"]
+        },
+        "media_stats_min_conversation_mos": {
+            "type": ["number", "null"]
+        },
+        "media_stats_min_conversation_r_factor": {
+            "type": ["number", "null"]
+        },
+        "originating_direction": {
+            "type": ["string", "null"]
+        },
+        "customer_participation": {
+            "type": ["boolean", "null"]
         }
     }
 }

@@ -1,0 +1,38 @@
+{
+    "type": "object",
+    "properties": {
+        "conversation_id": {
+            "type": "string",
+            "description": "id for the conversation"
+        },
+        "participant_id": {
+            "type": "string",
+            "description": "id for the participant"
+        },
+        "session_id": {
+            "type": "string",
+            "description": "id for the session"
+        },
+        "direction": {
+            "type": "string"
+        },
+        "media_type": {
+            "type": ["string", "null"]
+        },
+        "message_type": {
+            "type": ["string", "null"]
+        },
+        "outbound_campaign_id": {
+            "type": ["string", "null"]
+        },
+        "provider": {
+            "type": ["string", "null"]
+        },
+        "recording": {
+            "type": ["boolean", "null"]
+        },
+        "selected_agent_id": {
+            "type": ["string", "null"]
+        }
+    }
+}

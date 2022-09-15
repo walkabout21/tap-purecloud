@@ -125,61 +125,6 @@ location = {
 }
 
 
-segment = {
-    'type': 'object',
-    'properties': {
-        'session_id': {
-            'type': 'string',
-            'description': 'id for the session',
-        },
-        'segment_start': {
-            'type': ['string', 'null'],
-            'format': 'date-time',
-            'description': 'start datetime for the segment',
-        },
-        'segment_end': {
-            'type': ['string', 'null'],
-            'format': 'date-time',
-            'description': 'end datetime for the segment',
-        }
-    }
-}
-
-
-session = {
-    'type': 'object',
-    'properties': {
-        'session_id': {
-            'type': 'string',
-            'description': 'id for the session',
-        },
-        'segments': {
-            'type': ['array', 'null'],
-            'items': segment
-        }
-    }
-}
-
-
-participant = {
-    'type': 'object',
-    'properties': {
-        'participant_id': {
-            'type': 'string',
-            'description': 'id for the participant',
-        },
-        'participant_name': {
-            'type': ['string', 'null'],
-            'description': 'name for the participant',
-        },
-        'sessions': {
-            'type': ['array', 'null'],
-            'items': session
-        }
-    }
-}
-
-
 conversation = {
     'type': 'object',
     'properties': {
@@ -197,14 +142,135 @@ conversation = {
             'format': 'date-time',
             'description': 'end timestamp for the conversation',
         },
+        "division_ids": {
+            "type": ["array", "null"],
+            "items": {
+                "type": "string"
+            }
+        },
+        "conversation_initiator": {
+            "type": ["string", "null"]
+        },
+        "media_stats_min_conversation_mos": {
+            "type": ["number", "null"]
+        },
+        "media_stats_min_conversation_r_factor": {
+            "type": ["number", "null"]
+        },
+        "originating_direction": {
+            "type": ["string", "null"]
+        },
+        "customer_participation": {
+            "type": ["boolean", "null"]
+        },
+    }
+}
 
-        'participants': {
-            'type': ['array', 'null'],
-            'items': participant
+conversation_participant = {
+   'type': 'object', 
+   'properties': {
+        'conversation_id': {
+            'type': 'string',
+            'description': 'id for the conversation'
+        },
+        'participant_id': {
+            'type': 'string',
+            'description': 'id for the participant'
+        },
+        'participant_name': {
+            'type': ['string', 'null'],
+            'description': 'name for the participant'
+        },
+        "flagged_reason": {
+            "type": ["string", "null"]
+        },
+        "purpose": {
+            "type": ["string", "null"]
+        },
+   }
+}
+
+conversation_participant_session = {
+    'type': 'object', 
+    'properties': {
+        'conversation_id': {
+            'type': 'string',
+            'description': 'id for the conversation'
+        },
+        'participant_id': {
+            'type': 'string',
+            'description': 'id for the participant'
+        },
+        'session_id': {
+            'type': 'string',
+            'description': 'id for the session'
+        },
+        'direction': {
+            'type': 'string'
+        },
+        "media_type": {
+            "type": ["string", "null"]
+        },
+        "message_type": {
+            "type": ["string", "null"]
+        },
+        "outbound_campaign_id": {
+            "type": ["string", "null"]
+        },
+        "provider": {
+            "type": ["string", "null"]
+        },
+        "recording": {
+            "type": ["boolean", "null"]
+        },
+        "selected_agent_id": {
+            "type": ["string", "null"]
         }
     }
 }
 
+conversation_participant_session_segment = {
+    'type': 'object', 
+    'properties': {
+        'conversation_id': {
+            'type': 'string',
+            'description': 'id for the conversation'
+        },
+        'participant_id': {
+            'type': 'string',
+            'description': 'id for the participant'
+        },
+        'session_id': {
+            'type': 'string',
+            'description': 'id for the session'
+        },
+        'segment_start': {
+            'type': ['string', 'null'],
+            'format': 'date-time',
+            'description': 'start datetime for the segment'
+        },
+        'segment_end': {
+            'type': ['string', 'null'],
+            'format': 'date-time',
+            'description': 'end datetime for the segment'
+        },
+        "queue_id": {
+            "type": ["string", "null"]
+        },
+        "group_id": {
+            "type": ["string", "null"]
+        },
+        "subject": {
+            "type": ["string", "null"]
+        },
+        "source_conversation_id": {
+            "type": ["string", "null"]
+        },
+        "source_session_id": {
+            "type": ["string", "null"]
+        },
+    }
+}
 
 user_state = {
     'type': 'object',
