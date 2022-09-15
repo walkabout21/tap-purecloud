@@ -13,6 +13,27 @@
             "type": ["string", "null"],
             "format": "date-time",
             "description": "end timestamp for the conversation"
+        },
+        "division_ids": {
+            "type": ["array", "null"],
+            "items": {
+                "type": "string"
+            }
+        },
+        "conversation_initiator": {
+            "type": ["string", "null"]
+        },
+        "media_stats_min_conversation_mos": {
+            "type": ["number", "null"]
+        },
+        "media_stats_min_conversation_r_factor": {
+            "type": ["number", "null"]
+        },
+        "originating_direction": {
+            "type": ["string", "null"]
+        },
+        "customer_participation": {
+            "type": ["boolean", "null"]
         }
     }
 }
