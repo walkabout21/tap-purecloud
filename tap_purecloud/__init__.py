@@ -313,8 +313,8 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
     incr = datetime.timedelta(days=1)
 
     while sync_date < end_date:
-        logger.info("Syncing for {}".format(sync_date))
         next_date = sync_date + incr
+        logger.info(f"Syncing user schedules between {sync_date} and {next_date}")
 
         start_date_s = sync_date.strftime('%Y-%m-%dT00:00:00.000Z')
         end_date_s = next_date.strftime('%Y-%m-%dT00:00:00.000Z')
@@ -350,9 +350,14 @@ def sync_wfm_historical_adherence(api_instance: WorkforceManagementApi, config, 
     logger.info("Waiting for notification")
     wfm_notifcation_thread.join()
 
-    url = result_reference['downloadUrl']
-    response = requests.get(url).json()
-    yield response['data']
+    # downloadUrl is deprecated, use downloadUrls
+    # https://developer.genesys.cloud/devapps/sdk/docexplorer/purecloudpython/WfmHistoricalAdherenceResponse
+    download_urls = result_reference.get('downloadUrls', [])
+        
+    for download_url in download_urls:
+        resp = requests.get(download_url, timeout=15)
+        json_resp = resp.json()
+        yield json_resp['data']
 
 
 def handle_adherence(unit_id):
@@ -394,7 +399,10 @@ def sync_historical_adherence(api_instance: WorkforceManagementApi, config, unit
         body.time_zone = "UTC"
 
         gen_adherence = sync_wfm_historical_adherence(api_instance, config, unit_id, users, body)
-        stream_results(gen_adherence, handle_adherence(unit_id), 'historical_adherence', schemas.historical_adherence, ['userId', 'management_unit_id', 'startDate'], first_page)
+        stream_results(
+            gen_adherence, handle_adherence(unit_id), 'historical_adherence',
+            schemas.historical_adherence, ['userId', 'management_unit_id', 'startDate'], first_page
+        )
 
         sync_date = next_date
         first_page = False
@@ -424,6 +432,12 @@ def sync_management_units(api_client: ApiClient, config):
         gen_users = fetch_all_records(getter, 'entities', FakeBody(page_size=1000), max_pages=1)
         users = stream_results(gen_users, handle_mgmt_users(unit_id), 'management_unit_users', schemas.management_unit_users, ['user_id', 'management_unit_id'], first_page)
 
+        if not users:
+            # Without any users, we can't sync any schedules or get any historical adherence data
+            # https://developer.genesys.cloud/forum/t/missing-download-url-from-api-response/12656/3
+            logger.info(f"Cannot sync user_schedules or historical_adherence, skipping: no users for management_unit_id {unit_id}")
+            continue
+
         user_ids = [user['user_id'] for user in users]
         sync_user_schedules(api_instance, config, unit_id, user_ids, first_page)
 
@@ -441,12 +455,11 @@ def sync_conversations(api_client: ApiClient, config):
 
     first_page = True
     while sync_date < end_date:
-        logger.info("Syncing for {}".format(sync_date))
         next_date = sync_date + incr
-        interval = '{}/{}'.format(
-            sync_date.strftime('%Y-%m-%dT00:00:00.000Z'),
-            next_date.strftime('%Y-%m-%dT00:00:00.000Z')
-        )
+        logger.info(f"Syncing conversations between {sync_date} and {next_date}")
+        sync_date_s = sync_date.strftime('%Y-%m-%dT00:00:00.000Z')
+        next_date_s = next_date.strftime('%Y-%m-%dT00:00:00.000Z')
+        interval = '{}/{}'.format(sync_date_s, next_date_s)
 
         body = ConversationQuery()
         body.interval = interval
@@ -587,12 +600,11 @@ def sync_user_details(api_client: ApiClient, config):
 
     first_page = True
     while sync_date < end_date:
-        logger.info("Syncing for {}".format(sync_date))
         next_date = sync_date + incr
-        interval = '{}/{}'.format(
-            sync_date.strftime('%Y-%m-%dT00:00:00.000Z'),
-            next_date.strftime('%Y-%m-%dT00:00:00.000Z')
-        )
+        logger.info(f"Syncing user details between {sync_date} and {next_date}")
+        sync_date_s = sync_date.strftime('%Y-%m-%dT00:00:00.000Z')
+        next_date_s = next_date.strftime('%Y-%m-%dT00:00:00.000Z')
+        interval = '{}/{}'.format(sync_date_s, next_date_s)
 
         body = UserDetailsQuery()
         body.interval = interval
