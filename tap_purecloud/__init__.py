@@ -12,6 +12,7 @@ import hashlib
 import collections
 import os
 
+from typing import Any, Dict, Tuple, Union
 from dateutil.parser import parse as parse_datetime
 
 import singer
@@ -71,6 +72,7 @@ class FakeBody(object):
         self.page_number = page_number
         self.page_size = page_size
 
+EntityResults = Dict[str, Union[None, list]]
 
 @backoff.on_exception(backoff.constant,
                       (PureCloudApiException),
@@ -78,8 +80,7 @@ class FakeBody(object):
                       max_tries=API_RETRY_COUNT,
                       giveup=giveup,
                       interval=API_RETRY_INTERVAL_SECONDS)
-
-def fetch_one_page(get_records, body, entity_name, api_function_params):
+def fetch_one_page(get_records, body, entity_names: tuple, api_function_params) -> Tuple[Any, EntityResults]:
     if isinstance(body, FakeBody):
         # logger.info("Fetching {} records from page {}".format(body.page_size, body.page_number))
         response = get_records(page_size=body.page_size, page_number=body.page_number, **api_function_params)
@@ -92,48 +93,52 @@ def fetch_one_page(get_records, body, entity_name, api_function_params):
     else:
         raise RuntimeError("Unknown body passed to request: {}".format(body))
 
-    if hasattr(response, entity_name):
-        results = getattr(response, entity_name)
-    elif entity_name in response:
-        results = response[entity_name]
-    else:
-        results = []
+    results = {}
+    for entity_name in entity_names:
+        data = None
+        if hasattr(response, entity_name):
+            data = getattr(response, entity_name)
+        elif entity_name in response:
+            data = response[entity_name]
+        if data is None:
+            data = []
+        results[entity_name] = data
 
-    if results is None:
-        return response, []
-    else:
-        return response, results
-
-
-def should_continue(api_response, body, entity_name):
-    records = getattr(api_response, entity_name, [])
-
-    if records is None or len(records) == 0:
-        return False
-    elif hasattr(api_response, 'page_count') and body.page_number >= api_response.page_count:
-        return False
-    else:
-        return True
+    return response, results
 
 
-def fetch_all_records(get_records, entity_name, body, api_function_params=None, max_pages=None):
+def should_continue(api_response, body: FakeBody, entity_names: tuple) -> bool:
+    has_data_for_entities = []
+    for entity_name in entity_names:
+        records = getattr(api_response, entity_name, [])
+        if records is None or len(records) == 0:
+            has_data_for_entities.append(False)
+        elif hasattr(api_response, 'page_count') and body.page_number >= api_response.page_count:
+            has_data_for_entities.append(False)
+        else:
+            has_data_for_entities.append(True)
+    # Some entities might not have data, but others might so check that atleast one entity
+    # has data so that we can continue to fetch more
+    return any(has_data_for_entities)
+
+
+def fetch_all_records(get_records, entity_names: tuple, body, api_function_params=None, max_pages=None) -> EntityResults:
     if api_function_params is None:
         api_function_params = {}
 
     body.page_size = 100
     body.page_number = 1
 
-    api_response, results = fetch_one_page(get_records, body, entity_name, api_function_params)
+    api_response, results = fetch_one_page(get_records, body, entity_names, api_function_params)
     yield results
 
-    while should_continue(api_response, body, entity_name) and body.page_number != max_pages:
+    while should_continue(api_response, body, entity_names) and body.page_number != max_pages:
         body.page_number += 1
-
-        api_response, results = fetch_one_page(get_records, body, entity_name, api_function_params)
+        api_response, results = fetch_one_page(get_records, body, entity_names, api_function_params)
         yield results
 
 
-def fetch_all_analytics_records(get_records, body, entity_name, max_pages=None):
+def fetch_all_analytics_records(get_records, body, entity_names: tuple, max_pages=None) -> EntityResults:
     api_function_params = {}
 
     body.paging = {
@@ -141,12 +146,13 @@ def fetch_all_analytics_records(get_records, body, entity_name, max_pages=None):
         "pageNumber": 1
     }
 
-    api_response, results = fetch_one_page(get_records, body, entity_name, api_function_params)
+    api_response, results = fetch_one_page(get_records, body, entity_names, api_function_params)
     yield results
 
-    while results is not None and len(results) > 0 and body.paging['pageNumber'] != max_pages:
+    # Also check that there is some entity that has data to continue
+    while any(results[entity_name] is not None and len(results[entity_name]) > 0 for entity_name in entity_names) and body.paging['pageNumber'] != max_pages:
         body.paging['pageNumber'] += 1
-        api_response, results = fetch_one_page(get_records, body, entity_name, api_function_params)
+        api_response, results = fetch_one_page(get_records, body, entity_names, api_function_params)
         yield results
 
 
@@ -162,82 +168,95 @@ def handle_object(obj: dict) -> dict:
     return parse_dates(obj.to_dict())
 
 
-def stream_results(generator, transform_record, record_name, schema, primary_key, write_schema):
+def stream_results(generator, entity_names: tuple, transform_record, record_name, schema, primary_key, write_schema):
     all_records = []
     if write_schema:
         singer.write_schema(record_name, schema, primary_key)
     for page in generator:
-        if isinstance(page, dict):
-            records = [transform_record(k, v) for (k,v) in page.items()]
-        else:
-            records = [transform_record(record) for record in page]
-        valid_records = [r for r in records if r is not None]
-        singer.write_records(record_name, valid_records)
-        all_records.extend(valid_records)
+        for entity_name in entity_names:
+            if not entity_name:
+                continue
+            entity_page = page[entity_name]
+            if isinstance(entity_page, dict):
+                records = [transform_record(k, v) for (k,v) in entity_page.items()]
+            else:
+                records = [transform_record(record) for record in entity_page]
+            valid_records = [r for r in records if r is not None]
+            singer.write_records(record_name, valid_records)
+            all_records.extend(valid_records)
     return all_records
 
 
-def stream_results_list(generator, transform_record, record_name, schema, primary_key, write_schema):
+def stream_results_list(generator, entity_names: tuple, transform_record, record_name, schema, primary_key, write_schema):
     if write_schema:
         singer.write_schema(record_name, schema, primary_key)
 
     for page in generator:
-        records_list = [transform_record(record) for record in page]
-        for records in records_list:
-            singer.write_records(record_name, records)
+        for entity_name in entity_names:
+            if not entity_name:
+                continue
+            entity_page = page[entity_name]
+            records_list = [transform_record(record) for record in entity_page]
+            for records in records_list:
+                singer.write_records(record_name, records)
 
 
 def sync_users(api_client: ApiClient):
     logger.info("Fetching users")
     api_instance = UsersApi(api_client)
     body = FakeBody()
-    gen_users = fetch_all_records(api_instance.get_users, 'entities', body, {'expand': ['locations']})
-    stream_results(gen_users, handle_object, 'users', schemas.user, ['id'], True)
+    entity_names = ('entities', )
+    gen_users = fetch_all_records(api_instance.get_users, entity_names, body, {'expand': ['locations']})
+    stream_results(gen_users, entity_names, handle_object, 'users', schemas.user, ['id'], True)
 
 
 def sync_groups(api_client: ApiClient):
     logger.info("Fetching groups")
     api_instance = GroupsApi(api_client)
     body = FakeBody()
-    gen_groups = fetch_all_records(api_instance.get_groups, 'entities', body)
-    stream_results(gen_groups, handle_object, 'groups', schemas.group, ['id'], True)
+    entity_names = ('entities', )
+    gen_groups = fetch_all_records(api_instance.get_groups, entity_names, body)
+    stream_results(gen_groups, entity_names, handle_object, 'groups', schemas.group, ['id'], True)
 
 
 def sync_locations(api_client: ApiClient):
     logger.info("Fetching locations")
     api_instance = LocationsApi(api_client)
     body = LocationSearchRequest()
-    gen_locations = fetch_all_records(api_instance.post_locations_search, 'results', body)
-    stream_results(gen_locations, handle_object, 'location', schemas.location, ['id'], True)
+    entity_names = ('results', )
+    gen_locations = fetch_all_records(api_instance.post_locations_search, entity_names, body)
+    stream_results(gen_locations, entity_names, handle_object, 'location', schemas.location, ['id'], True)
 
 
 def sync_presence_definitions(api_client: ApiClient):
     logger.info("Fetching presence definitions")
     api_instance = PresenceApi(api_client)
     body = FakeBody()
-    gen_presences = fetch_all_records(api_instance.get_presencedefinitions, 'entities', body)
-    stream_results(gen_presences, handle_object, 'presence', schemas.presence, ['id'], True)
+    entity_names = ('entities', )
+    gen_presences = fetch_all_records(api_instance.get_presencedefinitions, entity_names, body)
+    stream_results(gen_presences, entity_names, handle_object, 'presence', schemas.presence, ['id'], True)
 
 
 def sync_queues(api_client: ApiClient):
     logger.info("Fetching queues")
     api_instance = RoutingApi(api_client)
     body = FakeBody()
-    gen_queues = fetch_all_records(api_instance.get_routing_queues, 'entities', body)
+    entity_names = ('entities', )
+    gen_queues = fetch_all_records(api_instance.get_routing_queues, entity_names, body)
 
-    queues = stream_results(gen_queues, handle_object, 'queues', schemas.queue, ['id'], True)
+    queues = stream_results(gen_queues, entity_names, handle_object, 'queues', schemas.queue, ['id'], True)
 
     for i, queue in enumerate(queues):
         first_page = (i == 0)
         queue_id = queue['id']
 
         getter = lambda *args, **kwargs: api_instance.get_routing_queue_users(queue_id)
-        gen_queue_membership = fetch_all_records(getter, 'entities', FakeBody())
-        stream_results(gen_queue_membership, handle_queue_user_membership(queue_id), 'queue_membership', schemas.queue_membership, ['id'], first_page)
+        gen_queue_membership = fetch_all_records(getter, entity_names, FakeBody())
+        stream_results(gen_queue_membership, entity_names, handle_queue_user_membership(queue_id), 'queue_membership', schemas.queue_membership, ['id'], first_page)
 
         getter = lambda *args, **kwargs: api_instance.get_routing_queue_wrapupcodes(queue_id)
-        gen_queue_wrapup_codes = fetch_all_records(getter, 'entities', FakeBody())
-        stream_results(gen_queue_wrapup_codes, handle_queue_wrapup_code(queue_id), 'queue_wrapup_code', schemas.queue_wrapup, ['id'], first_page)
+        gen_queue_wrapup_codes = fetch_all_records(getter, entity_names, FakeBody())
+        stream_results(gen_queue_wrapup_codes, entity_names, handle_queue_wrapup_code(queue_id), 'queue_wrapup_code', schemas.queue_wrapup, ['id'], first_page)
 
 
 
@@ -311,6 +330,7 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
     lookahead_weeks = config.get('schedule_lookahead_weeks', DEFAULT_SCHEDULE_LOOKAHEAD_WEEKS)
     end_date: 'datetime.date' = datetime.date.today() + datetime.timedelta(weeks=lookahead_weeks)
     incr = datetime.timedelta(days=1)
+    entity_names = ('user_schedules', )
 
     while sync_date < end_date:
         next_date = sync_date + incr
@@ -325,9 +345,9 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
         body.end_date = end_date_s
 
         getter = lambda *args, **kwargs: api_instance.post_workforcemanagement_managementunit_schedules_search(unit_id, body=body)
-        gen_schedules = fetch_all_analytics_records(getter, body, 'user_schedules', max_pages=1)
+        gen_schedules = fetch_all_analytics_records(getter, body, entity_names, max_pages=1)
 
-        stream_results(gen_schedules, handle_schedule(start_date_s), 'user_schedule', schemas.user_schedule, ['start_date', 'user_id'], first_page)
+        stream_results(gen_schedules, entity_names, handle_schedule(start_date_s), 'user_schedule', schemas.user_schedule, ['start_date', 'user_id'], first_page)
 
         sync_date = next_date
         first_page = False
@@ -357,7 +377,7 @@ def sync_wfm_historical_adherence(api_instance: WorkforceManagementApi, config, 
     for download_url in download_urls:
         resp = requests.get(download_url, timeout=15)
         json_resp = resp.json()
-        yield json_resp['data']
+        yield json_resp
 
 
 def handle_adherence(unit_id):
@@ -400,7 +420,7 @@ def sync_historical_adherence(api_instance: WorkforceManagementApi, config, unit
 
         gen_adherence = sync_wfm_historical_adherence(api_instance, config, unit_id, users, body)
         stream_results(
-            gen_adherence, handle_adherence(unit_id), 'historical_adherence',
+            gen_adherence, ('data', ), handle_adherence(unit_id), 'historical_adherence',
             schemas.historical_adherence, ['userId', 'management_unit_id', 'startDate'], first_page
         )
 
@@ -412,10 +432,10 @@ def sync_management_units(api_client: ApiClient, config):
     api_instance = WorkforceManagementApi(api_client)
     body = FakeBody()
     getter = get_wfm_units_for_broken_sdk(api_instance)
-    gen_units = fetch_all_records(getter, 'entities', body)
+    gen_units = fetch_all_records(getter, ('entities', ), body)
 
     # first, write out the units
-    mgmt_units = stream_results(gen_units, lambda x: x, 'management_unit', schemas.management_unit, ['id'], True)
+    mgmt_units = stream_results(gen_units, ('entities', ), lambda x: x, 'management_unit', schemas.management_unit, ['id'], True)
 
     for i, unit in enumerate(mgmt_units):
         logger.info("Syncing mgmt unit {} of {}".format(i + 1, len(mgmt_units)))
@@ -424,13 +444,13 @@ def sync_management_units(api_client: ApiClient, config):
 
         # don't allow args here
         getter = lambda *args, **kwargs: api_instance.get_workforcemanagement_managementunit_activitycodes(unit_id)
-        gen_activitycodes = fetch_all_records(getter, 'activity_codes', FakeBody(), max_pages=1)
-        stream_results(gen_activitycodes, handle_activity_codes(unit_id), 'activity_code', schemas.activity_code, ['id', 'management_unit_id'], first_page)
+        gen_activitycodes = fetch_all_records(getter, ('activity_codes', ), FakeBody(), max_pages=1)
+        stream_results(gen_activitycodes, ('activity_codes', ), handle_activity_codes(unit_id), 'activity_code', schemas.activity_code, ['id', 'management_unit_id'], first_page)
 
         # don't allow args here
         getter = lambda *args, **kwargs: api_instance.get_workforcemanagement_managementunit_users(unit_id)
-        gen_users = fetch_all_records(getter, 'entities', FakeBody(page_size=1000), max_pages=1)
-        users = stream_results(gen_users, handle_mgmt_users(unit_id), 'management_unit_users', schemas.management_unit_users, ['user_id', 'management_unit_id'], first_page)
+        gen_users = fetch_all_records(getter, ('entities', ), FakeBody(page_size=1000), max_pages=1)
+        users = stream_results(gen_users, ('entities', ), handle_mgmt_users(unit_id), 'management_unit_users', schemas.management_unit_users, ['user_id', 'management_unit_id'], first_page)
 
         if not users:
             # Without any users, we can't sync any schedules or get any historical adherence data
@@ -467,11 +487,12 @@ def sync_conversations(api_client: ApiClient, config):
         body.orderBy = "conversationStart"
 
         gen_conversations = fetch_all_analytics_records(
-            api_instance.post_analytics_conversations_details_query, body, 'conversations'
+            api_instance.post_analytics_conversations_details_query, body, ('aggregations', 'conversations')
         )
 
-        for conversation_page in gen_conversations:
-            conversations = handle_and_filter_page(conversation_page, handle_object)
+        for page_num, page in enumerate(gen_conversations, start=1):
+            aggregations = handle_and_filter_page(page['aggregations'], handle_object) # Aggregations is always empty?
+            conversations = handle_and_filter_page(page['conversations'], handle_object)
 
             # Handle deeply nested objects by separating them into different tables, keyed by the parent identifier
             for i, conversation in enumerate(conversations):
@@ -480,7 +501,6 @@ def sync_conversations(api_client: ApiClient, config):
                     singer.write_schema('conversation', schemas.conversation, ['conversation_id'])
 
                 participants = conversation.pop('participants', [])
-                singer.write_record('conversation', conversation)
                 for j, participant in enumerate(participants):
                     participant_id = participant['participant_id']
                     participant['conversation_id'] = conversation_id
@@ -526,6 +546,17 @@ def sync_conversations(api_client: ApiClient, config):
                                 )
                             singer.write_record('conversation_participant_session_segment', segment)
 
+                evaluations = conversation.pop('evaluations', []) or []
+                for j, evaluation in enumerate(evaluations):
+                    logger.info(f"has evaluations {conversation_id}")
+                    pass # TODO https://developer.genesys.cloud/devapps/sdk/docexplorer/purecloudpython/AnalyticsConversationWithoutAttributes
+
+                resolutions = conversation.pop('resolutions', []) or []
+                for j, resolution in enumerate(resolutions):
+                    logger.info(f"has resolutions {resolution}")
+                    pass # TODO
+                singer.write_record('conversation', conversation)
+                
             first_page = False
 
         sync_date = next_date
@@ -599,6 +630,7 @@ def sync_user_details(api_client: ApiClient, config):
     incr = datetime.timedelta(days=1)
 
     first_page = True
+    entity_names = ('user_details', )
     while sync_date < end_date:
         next_date = sync_date + incr
         logger.info(f"Syncing user details between {sync_date} and {next_date}")
@@ -611,8 +643,8 @@ def sync_user_details(api_client: ApiClient, config):
         body.order = "asc"
 
 
-        gen_user_details = fetch_all_analytics_records(api_instance.post_analytics_users_details_query, body, 'user_details')
-        stream_results_list(gen_user_details, handle_user_details, 'user_state', schemas.user_state, ['id'], first_page)
+        gen_user_details = fetch_all_analytics_records(api_instance.post_analytics_users_details_query, body, entity_names)
+        stream_results_list(gen_user_details, entity_names, handle_user_details, 'user_state', schemas.user_state, ['id'], first_page)
         sync_date = next_date
 
         first_page = False
