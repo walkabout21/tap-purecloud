@@ -12,7 +12,7 @@ import hashlib
 import collections
 import os
 
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union
 from dateutil.parser import parse as parse_datetime
 
 import singer
@@ -72,6 +72,7 @@ class FakeBody(object):
         self.page_number = page_number
         self.page_size = page_size
 
+EntityResults = Dict[str, Union[None, list]]
 
 @backoff.on_exception(backoff.constant,
                       (PureCloudApiException),
@@ -79,8 +80,7 @@ class FakeBody(object):
                       max_tries=API_RETRY_COUNT,
                       giveup=giveup,
                       interval=API_RETRY_INTERVAL_SECONDS)
-
-def fetch_one_page(get_records, body, entity_names: tuple, api_function_params) -> Tuple[Any, Dict[str, list]]:
+def fetch_one_page(get_records, body, entity_names: tuple, api_function_params) -> Tuple[Any, EntityResults]:
     if isinstance(body, FakeBody):
         # logger.info("Fetching {} records from page {}".format(body.page_size, body.page_number))
         response = get_records(page_size=body.page_size, page_number=body.page_number, **api_function_params)
@@ -95,12 +95,14 @@ def fetch_one_page(get_records, body, entity_names: tuple, api_function_params) 
 
     results = {}
     for entity_name in entity_names:
+        data = None
         if hasattr(response, entity_name):
-            results[entity_name] = getattr(response, entity_name) or []
+            data = getattr(response, entity_name)
         elif entity_name in response:
-            results[entity_name] = response[entity_name] or []
-        else:
-            results[entity_name] = []
+            data = response[entity_name]
+        if data is None:
+            data = []
+        results[entity_name] = data
 
     return response, results
 
@@ -109,7 +111,7 @@ def should_continue(api_response, body: FakeBody, entity_names: tuple) -> bool:
     has_data_for_entities = []
     for entity_name in entity_names:
         records = getattr(api_response, entity_name, [])
-        if not records:
+        if records is None or len(records) == 0:
             has_data_for_entities.append(False)
         elif hasattr(api_response, 'page_count') and body.page_number >= api_response.page_count:
             has_data_for_entities.append(False)
@@ -120,7 +122,7 @@ def should_continue(api_response, body: FakeBody, entity_names: tuple) -> bool:
     return any(has_data_for_entities)
 
 
-def fetch_all_records(get_records, entity_names: tuple, body, api_function_params=None, max_pages=None) -> Dict[str, list]:
+def fetch_all_records(get_records, entity_names: tuple, body, api_function_params=None, max_pages=None) -> EntityResults:
     if api_function_params is None:
         api_function_params = {}
 
@@ -136,7 +138,7 @@ def fetch_all_records(get_records, entity_names: tuple, body, api_function_param
         yield results
 
 
-def fetch_all_analytics_records(get_records, body, entity_names: tuple, max_pages=None) -> Dict[str, list]:
+def fetch_all_analytics_records(get_records, body, entity_names: tuple, max_pages=None) -> EntityResults:
     api_function_params = {}
 
     body.paging = {
@@ -148,7 +150,7 @@ def fetch_all_analytics_records(get_records, body, entity_names: tuple, max_page
     yield results
 
     # Also check that there is some entity that has data to continue
-    while any(len(results[entity_name]) > 0 for entity_name in entity_names) and body.paging['pageNumber'] != max_pages:
+    while any(results[entity_name] is not None and len(results[entity_name]) > 0 for entity_name in entity_names) and body.paging['pageNumber'] != max_pages:
         body.paging['pageNumber'] += 1
         api_response, results = fetch_one_page(get_records, body, entity_names, api_function_params)
         yield results
