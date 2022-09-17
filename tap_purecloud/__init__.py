@@ -310,7 +310,10 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
     sync_date: 'datetime.date' = config['_sync_date']
     lookahead_weeks = config.get('schedule_lookahead_weeks', DEFAULT_SCHEDULE_LOOKAHEAD_WEEKS)
     end_date: 'datetime.date' = datetime.date.today() + datetime.timedelta(weeks=lookahead_weeks)
-    incr = datetime.timedelta(days=1)
+    incr = datetime.timedelta(weeks=1)
+
+    if first_page:
+        singer.write_schema('user_schedule', schemas.user_schedule, ['start_date', 'user_id'])
 
     while sync_date < end_date:
         next_date = sync_date + incr
@@ -327,10 +330,42 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
         getter = lambda *args, **kwargs: api_instance.post_workforcemanagement_managementunit_schedules_search(unit_id, body=body)
         gen_schedules = fetch_all_analytics_records(getter, body, 'user_schedules', max_pages=1)
 
-        stream_results(gen_schedules, handle_schedule(start_date_s), 'user_schedule', schemas.user_schedule, ['start_date', 'user_id'], first_page)
+        # Since there's only 1 page of results, evaluate it
+        schedule_by_user = next(gen_schedules)
+
+        count_no_shifts = 0
+        for user_id, user_schedule in schedule_by_user.items():
+            if len(user_schedule.shifts) == 0:
+                # Skip user schedules without any shifts
+                count_no_shifts += 1
+                continue
+            user_schedule_ = handle_object(user_schedule)
+            user_schedule_["user_id"] = user_id
+            user_schedule_["start_date"] = start_date_s
+            shifts = user_schedule_.pop('shifts')
+            singer.write_record('user_schedule', user_schedule_)
+            for i, shift in enumerate(shifts):
+                if first_page and i == 0 :
+                    singer.write_schema('user_schedule_shifts', schemas.user_schedule_shifts, ['user_id', 'id'])
+
+                shift_id = shift["id"]
+                shift["user_id"] = user_id
+                activities = shift.pop('activities')
+                singer.write_record('user_schedule_shifts', shift)
+                for j, activity in enumerate(activities):
+                    if first_page and i == 0 and j == 0:
+                        singer.write_schema('user_schedule_shift_activities', schemas.user_schedule_shift_activities, ['shift_id', 'user_id', 'start_date'])
+                    activity["shift_id"] = shift_id
+                    activity["user_id"] = user_id
+                    singer.write_record('user_schedule_shift_activities', activity)
+
+            first_page = False
+
+        if len(schedule_by_user) == count_no_shifts:
+            # Observation: if this true for the first sync_date and next_date, then subsequent requests also will empty shifts? 
+            logger.info(f"No data written: all user schedules have empty shifts for management_unit_id {unit_id} between {sync_date} and {next_date}")
 
         sync_date = next_date
-        first_page = False
 
 
 def sync_wfm_historical_adherence(api_instance: WorkforceManagementApi, config, unit_id, users, body):

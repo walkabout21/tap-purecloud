@@ -358,31 +358,6 @@ management_unit_users = {
     }
 }
 
-user_schedule_shifts_activities = {
-    'type': 'object',
-    'properties': {
-        'activity_code_id': {
-            'type': 'string',
-            'description': 'id for the activity_code',
-        }
-    }
-}
-
-user_schedule_shifts = {
-    'type': 'object',
-    'properties': {
-        'start_date': {
-            'type': ['string', 'null'],
-            'format': 'date-time',
-            'description': 'date for the shift',
-        },
-        'activities': {
-            'type': ['array', 'null'],
-            'items': user_schedule_shifts_activities
-        }
-    }
-}
-
 user_schedule = {
     'type': 'object',
     'properties': {
@@ -395,10 +370,114 @@ user_schedule = {
             'format': 'date-time',
             'description': 'date for the sync',
         },
-        'shifts': {
-            'type': ['array', 'null'],
-            'items': user_schedule_shifts
+        "metadata": {
+            "type": ["object", "null"],
+            "properties": {
+                "version": {
+                    "type": "number"
+                },
+                "modified_by": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                    }
+                },
+                "date_modified": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "created_by": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                    }
+                },
+                "date_created": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "work_plan_id": {
+            "type": ["string", "null"]
         }
+    }
+}
+
+user_schedule_shifts = {
+    'type': 'object',
+    'properties': {
+        "id": {
+            "type": "string"
+        },
+        "user_id": {
+            "type": "string"
+        },
+        "length_in_minutes": {
+            "type": "number"
+        },
+        "week_schedule": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "week_date": {
+                    "type": "string"
+                }
+            }
+        },
+        'start_date': {
+            'type': ['string', 'null'],
+            'format': 'date-time',
+            'description': 'date for the shift',
+        },
+        "delete": {
+            "type": ["boolean", "null"]
+        },
+        "manually_edited": {
+            "type": ["boolean", "null"]
+        }
+    }
+}
+
+user_schedule_shift_activities = {
+    'type': 'object',
+    'properties': {
+        "user_id": {
+            "type": "string"
+        },
+        "shift_id": {
+            "type": "string"
+        },
+        'activity_code_id': {
+            'type': 'string',
+            'description': 'id for the activity_code',
+        },
+        "start_date": {
+            "type": "string",
+            "format": "date-time",
+        },
+        "length_in_minutes": {
+            "type": "number"
+        },
+        "description": {
+            "type": "string"
+        },
+        "counts_as_paid_time": {
+            "type": "boolean"
+        },
+        "is_dst_fallback": {
+            "type": ["boolean", "null"]
+        },
+        "time_off_request_id": {
+            "type": ["string", "null"]
+        }
+
     }
 }
 
