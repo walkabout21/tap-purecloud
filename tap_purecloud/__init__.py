@@ -366,18 +366,18 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
             singer.write_record('user_schedule', user_schedule_)
             for i, shift in enumerate(shifts):
                 if first_page and i == 0 :
-                    singer.write_schema('user_schedule_shifts', schemas.user_schedule_shifts, ['user_id', 'id'])
+                    singer.write_schema('user_schedule_shift', schemas.user_schedule_shift, ['user_id', 'id'])
 
                 shift_id = shift["id"]
                 shift["user_id"] = user_id
                 activities = shift.pop('activities')
-                singer.write_record('user_schedule_shifts', shift)
+                singer.write_record('user_schedule_shift', shift)
                 for j, activity in enumerate(activities):
                     if first_page and i == 0 and j == 0:
-                        singer.write_schema('user_schedule_shift_activities', schemas.user_schedule_shift_activities, ['shift_id', 'user_id', 'start_date'])
+                        singer.write_schema('user_schedule_shift_activity', schemas.user_schedule_shift_activity, ['shift_id', 'user_id', 'start_date'])
                     activity["shift_id"] = shift_id
                     activity["user_id"] = user_id
-                    singer.write_record('user_schedule_shift_activities', activity)
+                    singer.write_record('user_schedule_shift_activity', activity)
 
             first_page = False
 

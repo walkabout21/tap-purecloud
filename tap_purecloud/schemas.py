@@ -408,7 +408,7 @@ user_schedule = {
     }
 }
 
-user_schedule_shifts = {
+user_schedule_shift = {
     'type': 'object',
     'properties': {
         "id": {
@@ -445,7 +445,7 @@ user_schedule_shifts = {
     }
 }
 
-user_schedule_shift_activities = {
+user_schedule_shift_activity = {
     'type': 'object',
     'properties': {
         "user_id": {
