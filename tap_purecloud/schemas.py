@@ -181,6 +181,9 @@ conversation_participant = {
             'type': ['string', 'null'],
             'description': 'name for the participant'
         },
+        "user_id": {
+            "type": ["string", "null"]
+        },
         "flagged_reason": {
             "type": ["string", "null"]
         },
@@ -208,6 +211,12 @@ conversation_participant_session = {
         'direction': {
             'type': 'string'
         },
+        "acw_skipped": {
+            "type": ["boolean", "null"]
+        },
+        "assigner_id": {
+            "type": ["string", "null"]
+        },
         "media_type": {
             "type": ["string", "null"]
         },
@@ -230,29 +239,38 @@ conversation_participant_session = {
 }
 
 conversation_participant_session_segment = {
-    'type': 'object', 
-    'properties': {
-        'conversation_id': {
-            'type': 'string',
-            'description': 'id for the conversation'
+    "type": "object",
+    "properties": {
+        "conversation_id": {
+            "type": "string",
+            "description": "id for the conversation"
         },
-        'participant_id': {
-            'type': 'string',
-            'description': 'id for the participant'
+        "destination_conversation_id": {
+            "type": "string"
         },
-        'session_id': {
-            'type': 'string',
-            'description': 'id for the session'
+        "participant_id": {
+            "type": "string",
+            "description": "id for the participant"
         },
-        'segment_start': {
-            'type': ['string', 'null'],
-            'format': 'date-time',
-            'description': 'start datetime for the segment'
+        "session_id": {
+            "type": "string",
+            "description": "id for the session"
         },
-        'segment_end': {
-            'type': ['string', 'null'],
-            'format': 'date-time',
-            'description': 'end datetime for the segment'
+        "destination_session_id": {
+            "type": "string"
+        },
+        "segment_start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "start datetime for the segment"
+        },
+        "segment_end": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "end datetime for the segment"
+        },
+        "segment_type": {
+            "type": "string"
         },
         "queue_id": {
             "type": ["string", "null"]
@@ -268,7 +286,7 @@ conversation_participant_session_segment = {
         },
         "source_session_id": {
             "type": ["string", "null"]
-        },
+        }
     }
 }
 
@@ -299,6 +317,7 @@ conversation_participant_session_metric = {
         }
     }
 }
+
 
 user_state = {
     'type': 'object',

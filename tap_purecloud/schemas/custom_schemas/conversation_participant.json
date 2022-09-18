@@ -9,6 +9,9 @@
             "type": "string",
             "description": "id for the participant"
         },
+        "user_id": {
+            "type": ["string", "null"]
+        },
         "participant_name": {
             "type": ["string", "null"],
             "description": "name for the participant"

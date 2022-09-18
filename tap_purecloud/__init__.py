@@ -578,7 +578,7 @@ def sync_conversations(api_client: ApiClient, config):
                                 singer.write_schema(
                                     'conversation_participant_session_segment',
                                     schemas.conversation_participant_session_segment,
-                                    ['conversation_id', 'participant_id', 'session_id', 'segment_end']
+                                    ['conversation_id', 'participant_id', 'session_id', 'segment_start']
                                 )
                             singer.write_record('conversation_participant_session_segment', segment)
 
