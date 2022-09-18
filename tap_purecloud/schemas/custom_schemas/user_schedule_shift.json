@@ -1,0 +1,36 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "user_id": {
+            "type": "string"
+        },
+        "length_in_minutes": {
+            "type": "number"
+        },
+        "week_schedule": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "week_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "start_date": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "date for the shift"
+        },
+        "delete": {
+            "type": ["boolean", "null"]
+        },
+        "manually_edited": {
+            "type": ["boolean", "null"]
+        }
+    }
+}
