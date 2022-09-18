@@ -16,6 +16,12 @@
         "direction": {
             "type": "string"
         },
+        "acw_skipped": {
+            "type": ["boolean", "null"]
+        },
+        "assigner_id": {
+            "type": ["string", "null"]
+        },
         "media_type": {
             "type": ["string", "null"]
         },

@@ -9,18 +9,19 @@
             "type": "string",
             "description": "id for the participant"
         },
-        "user_id": {
-            "type": ["string", "null"]
+        "session_id": {
+            "type": "string",
+            "description": "id for the session"
         },
-        "participant_name": {
-            "type": ["string", "null"],
-            "description": "name for the participant"
+        "name": {
+            "type": "string"
         },
-        "flagged_reason": {
-            "type": ["string", "null"]
+        "value": {
+            "type": "number"
         },
-        "purpose": {
-            "type": ["string", "null"]
+        "emit_date": {
+            "type": "string",
+            "format": "date-time"
         }
     }
 }

@@ -5,6 +5,9 @@
             "type": "string",
             "description": "id for the conversation"
         },
+        "destination_conversation_id": {
+            "type": ["string", "null"]
+        },
         "participant_id": {
             "type": "string",
             "description": "id for the participant"
@@ -13,8 +16,11 @@
             "type": "string",
             "description": "id for the session"
         },
+        "destination_session_id": {
+            "type": ["string", "null"]
+        },
         "segment_start": {
-            "type": ["string", "null"],
+            "type": "string",
             "format": "date-time",
             "description": "start datetime for the segment"
         },
@@ -22,6 +28,9 @@
             "type": ["string", "null"],
             "format": "date-time",
             "description": "end datetime for the segment"
+        },
+        "segment_type": {
+            "type": "string"
         },
         "queue_id": {
             "type": ["string", "null"]

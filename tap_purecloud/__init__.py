@@ -506,11 +506,13 @@ def sync_conversations(api_client: ApiClient, config):
 
     sync_date: 'datetime.date' = config['_sync_date']
     end_date: 'datetime.date' = datetime.date.today() + datetime.timedelta(days=1)
-    incr = datetime.timedelta(days=1)
+    incr = datetime.timedelta(weeks=1)
 
     first_page = True
     while sync_date < end_date:
         next_date = sync_date + incr
+        if next_date > end_date:
+            next_date = end_date
         logger.info(f"Syncing conversations between {sync_date} and {next_date}")
         sync_date_s = sync_date.strftime('%Y-%m-%dT00:00:00.000Z')
         next_date_s = next_date.strftime('%Y-%m-%dT00:00:00.000Z')
@@ -564,6 +566,7 @@ def sync_conversations(api_client: ApiClient, config):
                             )
 
                         segments = session.pop('segments', [])
+                        metrics = session.pop('metrics') or []
                         singer.write_record('conversation_participant_session', session)
                         for l, segment in enumerate(segments):
                             segment['conversation_id'] = conversation_id
@@ -577,9 +580,26 @@ def sync_conversations(api_client: ApiClient, config):
                                 singer.write_schema(
                                     'conversation_participant_session_segment',
                                     schemas.conversation_participant_session_segment,
-                                    ['conversation_id', 'participant_id', 'session_id', 'segment_end']
+                                    ['conversation_id', 'participant_id', 'session_id', 'segment_start']
                                 )
                             singer.write_record('conversation_participant_session_segment', segment)
+
+                        for l, metric in enumerate(metrics):
+                            metric['conversation_id'] = conversation_id
+                            metric['participant_id'] = participant_id
+                            metric['session_id'] = session_id
+
+                            write_conversation_participant_session_metric_schema = (
+                                first_page and i == 0 and j == 0 and k == 0 and l == 0
+                            )
+                            if write_conversation_participant_session_metric_schema:
+                                singer.write_schema(
+                                    'conversation_participant_session_metric',
+                                    schemas.conversation_participant_session_metric,
+                                    ['conversation_id', 'participant_id', 'session_id', 'name', 'emit_date']
+                                )
+                            singer.write_record('conversation_participant_session_metric', metric)
+
 
                 evaluations = conversation.pop('evaluations', []) or []
                 for j, evaluation in enumerate(evaluations):
