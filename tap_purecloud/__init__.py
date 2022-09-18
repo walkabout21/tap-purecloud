@@ -564,6 +564,7 @@ def sync_conversations(api_client: ApiClient, config):
                             )
 
                         segments = session.pop('segments', [])
+                        metrics = session.pop('metrics') or []
                         singer.write_record('conversation_participant_session', session)
                         for l, segment in enumerate(segments):
                             segment['conversation_id'] = conversation_id
@@ -580,6 +581,23 @@ def sync_conversations(api_client: ApiClient, config):
                                     ['conversation_id', 'participant_id', 'session_id', 'segment_end']
                                 )
                             singer.write_record('conversation_participant_session_segment', segment)
+
+                        for l, metric in enumerate(metrics):
+                            metric['conversation_id'] = conversation_id
+                            metric['participant_id'] = participant_id
+                            metric['session_id'] = session_id
+
+                            write_conversation_participant_session_metric_schema = (
+                                first_page and i == 0 and j == 0 and k == 0 and l == 0
+                            )
+                            if write_conversation_participant_session_metric_schema:
+                                singer.write_schema(
+                                    'conversation_participant_session_metric',
+                                    schemas.conversation_participant_session_metric,
+                                    ['conversation_id', 'participant_id', 'session_id', 'name', 'emit_date']
+                                )
+                            singer.write_record('conversation_participant_session_metric', metric)
+
 
                 evaluations = conversation.pop('evaluations', []) or []
                 for j, evaluation in enumerate(evaluations):
@@ -728,15 +746,15 @@ def do_sync(args):
     logger.info(f"Successfully got access token. Starting sync from {start_date}")
     
     # https://developer.genesys.cloud/devapps/sdk/docexplorer/purecloudpython/
-    sync_users(api_client)
-    sync_groups(api_client)
-    sync_locations(api_client)
-    sync_presence_definitions(api_client)
-    sync_queues(api_client)
+    # sync_users(api_client)
+    # sync_groups(api_client)
+    # sync_locations(api_client)
+    # sync_presence_definitions(api_client)
+    # sync_queues(api_client)
 
-    sync_management_units(api_client, config)
+    # sync_management_units(api_client, config)
     sync_conversations(api_client, config)
-    sync_user_details(api_client, config)
+    # sync_user_details(api_client, config)
 
     new_state = {
         'start_date': datetime.date.today().strftime('%Y-%m-%d')

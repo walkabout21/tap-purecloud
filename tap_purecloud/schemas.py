@@ -272,6 +272,34 @@ conversation_participant_session_segment = {
     }
 }
 
+conversation_participant_session_metric = {
+    "type": "object",
+    "properties": {
+        "conversation_id": {
+            "type": "string",
+            "description": "id for the conversation"
+        },
+        "participant_id": {
+            "type": "string",
+            "description": "id for the participant"
+        },
+        "session_id": {
+            "type": "string",
+            "description": "id for the session"
+        },
+        "name": {
+            "type": "string"
+        },
+        "value": {
+            "type": "number"
+        },
+        "emit_date": {
+            "type": "string",
+            "format": "date-time"
+        }
+    }
+}
+
 user_state = {
     'type': 'object',
     'properties': {
