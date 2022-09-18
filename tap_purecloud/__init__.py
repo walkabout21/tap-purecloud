@@ -506,11 +506,13 @@ def sync_conversations(api_client: ApiClient, config):
 
     sync_date: 'datetime.date' = config['_sync_date']
     end_date: 'datetime.date' = datetime.date.today() + datetime.timedelta(days=1)
-    incr = datetime.timedelta(days=1)
+    incr = datetime.timedelta(weeks=1)
 
     first_page = True
     while sync_date < end_date:
         next_date = sync_date + incr
+        if next_date > end_date:
+            next_date = end_date
         logger.info(f"Syncing conversations between {sync_date} and {next_date}")
         sync_date_s = sync_date.strftime('%Y-%m-%dT00:00:00.000Z')
         next_date_s = next_date.strftime('%Y-%m-%dT00:00:00.000Z')
