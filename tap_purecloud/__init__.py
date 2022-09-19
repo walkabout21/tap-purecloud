@@ -333,6 +333,12 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
 
     if first_page:
         singer.write_schema('user_schedule', schemas.user_schedule, ['start_date', 'user_id'])
+        singer.write_schema('user_schedule_shift', schemas.user_schedule_shift, ['user_id', 'id', 'week_schedule__id'])
+        singer.write_schema(
+            'user_schedule_shift_activity', schemas.user_schedule_shift_activity,
+            ['shift_id', 'user_id', 'start_date']
+        )
+
     entity_names = ('user_schedules', )
 
     while sync_date < end_date:
@@ -362,24 +368,19 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
             user_schedule_ = handle_object(user_schedule)
             user_schedule_["user_id"] = user_id
             user_schedule_["start_date"] = start_date_s
+
             shifts = user_schedule_.pop('shifts')
             singer.write_record('user_schedule', user_schedule_)
-            for i, shift in enumerate(shifts):
-                if first_page and i == 0 :
-                    singer.write_schema('user_schedule_shift', schemas.user_schedule_shift, ['user_id', 'id'])
-
+            for shift in shifts:
                 shift_id = shift["id"]
                 shift["user_id"] = user_id
+
                 activities = shift.pop('activities')
                 singer.write_record('user_schedule_shift', shift)
-                for j, activity in enumerate(activities):
-                    if first_page and i == 0 and j == 0:
-                        singer.write_schema('user_schedule_shift_activity', schemas.user_schedule_shift_activity, ['shift_id', 'user_id', 'start_date'])
+                for activity in activities:
                     activity["shift_id"] = shift_id
                     activity["user_id"] = user_id
                     singer.write_record('user_schedule_shift_activity', activity)
-
-            first_page = False
 
         if len(schedule_by_user) == count_no_shifts:
             # Observation: if this true for the first sync_date and next_date, then subsequent requests also will empty shifts? 
@@ -508,7 +509,28 @@ def sync_conversations(api_client: ApiClient, config):
     end_date: 'datetime.date' = datetime.date.today() + datetime.timedelta(days=1)
     incr = datetime.timedelta(weeks=1)
 
-    first_page = True
+    singer.write_schema('conversation', schemas.conversation, ['conversation_id'])
+    singer.write_schema(
+        'conversation_participant',
+        schemas.conversation_participant,
+        ['conversation_id', 'participant_id']
+    )
+    singer.write_schema(
+        'conversation_participant_session',
+        schemas.conversation_participant_session,
+        ['conversation_id', 'participant_id', 'session_id']
+    )
+    singer.write_schema(
+        'conversation_participant_session_segment',
+        schemas.conversation_participant_session_segment,
+        ['conversation_id', 'participant_id', 'session_id', 'segment_start']
+    )
+    singer.write_schema(
+        'conversation_participant_session_metric',
+        schemas.conversation_participant_session_metric,
+        ['conversation_id', 'participant_id', 'session_id', 'name', 'emit_date']
+    )
+
     while sync_date < end_date:
         next_date = sync_date + incr
         if next_date > end_date:
@@ -532,87 +554,37 @@ def sync_conversations(api_client: ApiClient, config):
             conversations = handle_and_filter_page(page['conversations'], handle_object)
 
             # Handle deeply nested objects by separating them into different tables, keyed by the parent identifier
-            for i, conversation in enumerate(conversations):
+            for conversation in conversations:
                 conversation_id = conversation['conversation_id']
-                if first_page and i == 0:
-                    singer.write_schema('conversation', schemas.conversation, ['conversation_id'])
 
                 participants = conversation.pop('participants', [])
-                for j, participant in enumerate(participants):
+                for participant in participants:
                     participant_id = participant['participant_id']
                     participant['conversation_id'] = conversation_id
-                    write_conversation_participant_schema = first_page and i == 0 and j == 0
-                    if write_conversation_participant_schema:
-                        singer.write_schema(
-                            'conversation_participant',
-                            schemas.conversation_participant,
-                            ['conversation_id', 'participant_id']
-                        )
 
                     sessions = participant.pop('sessions', [])
                     singer.write_record('conversation_participant', participant)
-                    for k, session in enumerate(sessions):
+                    for session in sessions:
                         session_id = session['session_id']
                         session['conversation_id'] = conversation_id
                         session['participant_id'] = participant_id
-                        write_conversation_participant_session_schema = (
-                            first_page and i == 0 and j == 0 and k == 0
-                        )
-                        if write_conversation_participant_schema:
-                            singer.write_schema(
-                                'conversation_participant_session',
-                                schemas.conversation_participant_session,
-                                ['conversation_id', 'participant_id', 'session_id']
-                            )
 
                         segments = session.pop('segments', [])
                         metrics = session.pop('metrics') or []
                         singer.write_record('conversation_participant_session', session)
-                        for l, segment in enumerate(segments):
+                        for segment in segments:
                             segment['conversation_id'] = conversation_id
                             segment['participant_id'] = participant_id
                             segment['session_id'] = session_id
-
-                            write_conversation_participant_session_segment_schema = (
-                                first_page and i == 0 and j == 0 and k == 0 and l == 0
-                            )
-                            if write_conversation_participant_session_segment_schema:
-                                singer.write_schema(
-                                    'conversation_participant_session_segment',
-                                    schemas.conversation_participant_session_segment,
-                                    ['conversation_id', 'participant_id', 'session_id', 'segment_start']
-                                )
                             singer.write_record('conversation_participant_session_segment', segment)
 
-                        for l, metric in enumerate(metrics):
+                        for metric in metrics:
                             metric['conversation_id'] = conversation_id
                             metric['participant_id'] = participant_id
                             metric['session_id'] = session_id
-
-                            write_conversation_participant_session_metric_schema = (
-                                first_page and i == 0 and j == 0 and k == 0 and l == 0
-                            )
-                            if write_conversation_participant_session_metric_schema:
-                                singer.write_schema(
-                                    'conversation_participant_session_metric',
-                                    schemas.conversation_participant_session_metric,
-                                    ['conversation_id', 'participant_id', 'session_id', 'name', 'emit_date']
-                                )
                             singer.write_record('conversation_participant_session_metric', metric)
 
-
-                evaluations = conversation.pop('evaluations', []) or []
-                for j, evaluation in enumerate(evaluations):
-                    logger.info(f"has evaluations {conversation_id}")
-                    pass # TODO https://developer.genesys.cloud/devapps/sdk/docexplorer/purecloudpython/AnalyticsConversationWithoutAttributes
-
-                resolutions = conversation.pop('resolutions', []) or []
-                for j, resolution in enumerate(resolutions):
-                    logger.info(f"has resolutions {resolution}")
-                    pass # TODO
                 singer.write_record('conversation', conversation)
-                
-            first_page = False
 
         sync_date = next_date
 
