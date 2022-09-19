@@ -12,6 +12,7 @@
         },
         "week_schedule": {
             "type": "object",
+            "description": "The schedule to which this shift belongs",
             "properties": {
                 "id": {
                     "type": "string"
