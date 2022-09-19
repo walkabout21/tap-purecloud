@@ -41,6 +41,7 @@ logger = singer.get_logger()
 HTTP_SUCCESS = 200
 HTTP_RATE_LIMIT_ERROR = 429
 API_RETRY_INTERVAL_SECONDS = 30
+REQUESTS_TIMEOUT = 30
 API_RETRY_COUNT = 5
 BASE_PURECLOUD_AUTH_HOST = 'https://login.{domain}'
 BASE_PURECLOUD_API_HOST = 'https://api.{domain}'
@@ -416,9 +417,13 @@ def sync_wfm_historical_adherence(api_instance: WorkforceManagementApi, config, 
     download_urls = result_reference.get('downloadUrls', [])
         
     for download_url in download_urls:
-        resp = requests.get(download_url, timeout=15)
-        json_resp = resp.json()
-        yield json_resp
+        try:
+            resp = requests.get(download_url, timeout=REQUESTS_TIMEOUT)
+            json_resp = resp.json()
+            yield json_resp
+        except requests.exceptions.Timeout:
+            logger.error(f"Request timeout for management_unit_id {unit_id}, skipping: no response issued within {REQUESTS_TIMEOUT}s")
+            continue
 
 
 def handle_adherence(unit_id):
@@ -446,8 +451,8 @@ def sync_historical_adherence(api_instance: WorkforceManagementApi, config, unit
     sync_date = sync_date - incr
 
     while sync_date < end_date:
-        logger.info("Syncing historical adherence for {}".format(sync_date))
         next_date = sync_date + incr
+        logger.info(f"Syncing historical adherence between {sync_date} and {next_date}")
 
         start_date_s = sync_date.strftime('%Y-%m-%dT00:00:00.000Z')
         end_date_s = next_date.strftime('%Y-%m-%dT00:00:00.000Z')
