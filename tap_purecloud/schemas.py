@@ -469,6 +469,7 @@ user_schedule_shift = {
         },
         "week_schedule": {
             "type": "object",
+            "description": "The schedule to which this shift belongs",
             "properties": {
                 "id": {
                     "type": "string"
@@ -499,6 +500,9 @@ user_schedule_shift_activity = {
             "type": "string"
         },
         "shift_id": {
+            "type": "string"
+        },
+        "week_schedule_id": {
             "type": "string"
         },
         'activity_code_id': {

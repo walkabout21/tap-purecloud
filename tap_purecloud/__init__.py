@@ -333,10 +333,13 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
 
     if first_page:
         singer.write_schema('user_schedule', schemas.user_schedule, ['start_date', 'user_id'])
-        singer.write_schema('user_schedule_shift', schemas.user_schedule_shift, ['user_id', 'id', 'week_schedule__id'])
+        singer.write_schema(
+            'user_schedule_shift', schemas.user_schedule_shift,
+            ['user_id', 'id', 'start_date', 'week_schedule__id']
+        )
         singer.write_schema(
             'user_schedule_shift_activity', schemas.user_schedule_shift_activity,
-            ['shift_id', 'user_id', 'start_date']
+            ['shift_id', 'user_id', 'start_date', 'week_schedule_id', 'activity_code_id']
         )
 
     entity_names = ('user_schedules', )
@@ -373,11 +376,13 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
             singer.write_record('user_schedule', user_schedule_)
             for shift in shifts:
                 shift_id = shift["id"]
+                shift_week_schedule_id = shift["week_schedule"]["id"]
                 shift["user_id"] = user_id
 
                 activities = shift.pop('activities')
                 singer.write_record('user_schedule_shift', shift)
                 for activity in activities:
+                    activity["week_schedule_id"] = shift_week_schedule_id
                     activity["shift_id"] = shift_id
                     activity["user_id"] = user_id
                     singer.write_record('user_schedule_shift_activity', activity)

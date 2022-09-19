@@ -7,6 +7,9 @@
         "shift_id": {
             "type": "string"
         },
+        "week_schedule_id": {
+            "type": "string"
+        },
         "activity_code_id": {
             "type": "string",
             "description": "id for the activity_code"
