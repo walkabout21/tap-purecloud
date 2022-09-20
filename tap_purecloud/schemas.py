@@ -246,7 +246,7 @@ conversation_participant_session_segment = {
             "description": "id for the conversation"
         },
         "destination_conversation_id": {
-            "type": "string"
+            "type": ["string", "null"]
         },
         "participant_id": {
             "type": "string",
@@ -257,7 +257,7 @@ conversation_participant_session_segment = {
             "description": "id for the session"
         },
         "destination_session_id": {
-            "type": "string"
+            "type": ["string", "null"]
         },
         "segment_start": {
             "type": "string",
