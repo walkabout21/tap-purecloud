@@ -28,7 +28,8 @@ async def get_websocket_msg(uri):
             if body.get('id'):
                 return body
 
-        raise RuntimeError("Did not find expected message")
+        logger.warning("Did not find expected message")
+        return {}
 
 
 def get_historical_adherence(api_client, config, result_reference):

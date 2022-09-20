@@ -406,8 +406,11 @@ def sync_wfm_historical_adherence(api_instance: WorkforceManagementApi, config, 
     time.sleep(3)
 
     logger.info("POSTING adherence request")
-    wfm_response = api_instance.post_workforcemanagement_managementunit_historicaladherencequery(
+    try:
+        wfm_response = api_instance.post_workforcemanagement_managementunit_historicaladherencequery(
             unit_id, body=body)
+    except PureCloudApiException as e:
+        logger.error(f"PureCloudApiException raised for {unit_id}: {str(e)}")
 
     logger.info("Waiting for notification")
     wfm_notifcation_thread.join()
