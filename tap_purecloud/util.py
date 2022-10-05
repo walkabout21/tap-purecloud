@@ -20,3 +20,11 @@ def handle_and_filter_page(page_of_records: list, handler: callable) -> list:
             valid_records.append(data)
 
     return valid_records
+
+def safe_get(obj, default_value, *keys):
+    for key in keys:
+        try:
+            obj = obj[key]
+        except:
+            return default_value
+    return obj

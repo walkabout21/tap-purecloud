@@ -34,7 +34,7 @@ from PureCloudPlatformClientV2.rest import ApiException as PureCloudApiException
 
 import tap_purecloud.schemas as schemas
 from tap_purecloud.websocket_helper import get_historical_adherence
-from tap_purecloud.util import safe_json_serialize_deserialize, handle_and_filter_page
+from tap_purecloud.util import safe_json_serialize_deserialize, handle_and_filter_page, safe_get
 
 logger = singer.get_logger()
 
@@ -330,6 +330,12 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
     sync_date: 'datetime.date' = config['_sync_date']
     lookahead_weeks = config.get('schedule_lookahead_weeks', DEFAULT_SCHEDULE_LOOKAHEAD_WEEKS)
     end_date: 'datetime.date' = datetime.date.today() + datetime.timedelta(weeks=lookahead_weeks)
+
+    num_days_to_lookback = safe_get(config, 0, 'sync_offset', 'management_unit', 'num_days')
+    if num_days_to_lookback and safe_get(config, False, 'sync_offset', 'applied'):
+        sync_date = sync_date - datetime.timedelta(days=num_days_to_lookback)
+        logger.info(f"Applied sync offset of {num_days_to_lookback} days to user schedules: syncing between {sync_date} and {end_date}")
+    
     incr = datetime.timedelta(weeks=1)
 
     if first_page:
@@ -445,10 +451,15 @@ def get_user_unit_mapping(users):
 
 
 def sync_historical_adherence(api_instance: WorkforceManagementApi, config, unit_id, users, first_page):
-
     sync_date: 'datetime.date' = config['_sync_date']
-
     end_date: 'datetime.date' = datetime.date.today()
+
+    
+    num_days_to_lookback = int(safe_get(config, 0, 'sync_offset', 'management_unit', 'num_days'))
+    if num_days_to_lookback and safe_get(config, False, 'sync_offset', 'applied'):
+        sync_date = sync_date - datetime.timedelta(days=num_days_to_lookback)
+        logger.info(f"Applied sync offset of {num_days_to_lookback} days to historical adherence: syncing between {sync_date} and {end_date}")
+
     incr = datetime.timedelta(days=1)
 
     sync_date = sync_date - incr
@@ -520,6 +531,11 @@ def sync_conversations(api_client: ApiClient, config):
 
     sync_date: 'datetime.date' = config['_sync_date']
     end_date: 'datetime.date' = datetime.date.today() + datetime.timedelta(days=1)
+    num_days_to_lookback = int(safe_get(config, 0, 'sync_offset', 'conversation', 'num_days'))
+    if num_days_to_lookback and safe_get(config, False, 'sync_offset', 'applied'):
+        sync_date = sync_date - datetime.timedelta(days=num_days_to_lookback)
+        logger.info(f"Applied sync offset of {num_days_to_lookback} days to conversation: syncing between {sync_date} and {end_date}")
+
     incr = datetime.timedelta(weeks=1)
 
     singer.write_schema('conversation', schemas.conversation, ['conversation_id'])
@@ -661,19 +677,23 @@ def handle_user_details(user_details_record):
     return presences + statuses
 
 
-def sync_user_details(api_client: ApiClient, config):
-    logger.info("Fetching user details")
+def sync_user_state(api_client: ApiClient, config):
+    logger.info("Fetching user state")
     api_instance = UsersApi(api_client)
 
     sync_date: 'datetime.date' = config['_sync_date']
     end_date: 'datetime.date' = datetime.date.today() + datetime.timedelta(days=1)
+    num_days_to_lookback = int(safe_get(config, 0, 'sync_offset', 'user_state', 'num_days'))
+    if num_days_to_lookback and safe_get(config, False, 'sync_offset', 'applied'):
+        sync_date = sync_date - datetime.timedelta(days=num_days_to_lookback)
+        logger.info(f"Applied sync offset of {num_days_to_lookback} days to user state: syncing between {sync_date} and {end_date}")
     incr = datetime.timedelta(days=1)
 
     first_page = True
     entity_names = ('user_details', )
     while sync_date < end_date:
         next_date = sync_date + incr
-        logger.info(f"Syncing user details between {sync_date} and {next_date}")
+        logger.info(f"Syncing user state between {sync_date} and {next_date}")
         sync_date_s = sync_date.strftime('%Y-%m-%dT00:00:00.000Z')
         next_date_s = next_date.strftime('%Y-%m-%dT00:00:00.000Z')
         interval = '{}/{}'.format(sync_date_s, next_date_s)
@@ -741,7 +761,7 @@ def do_sync(args):
 
     sync_management_units(api_client, config)
     sync_conversations(api_client, config)
-    sync_user_details(api_client, config)
+    sync_user_state(api_client, config)
 
     new_state = {
         'start_date': datetime.date.today().strftime('%Y-%m-%d')
