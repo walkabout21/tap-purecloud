@@ -346,7 +346,7 @@ def sync_user_schedules(api_instance: WorkforceManagementApi, config, unit_id, u
         )
         singer.write_schema(
             'user_schedule_shift_activity', schemas.user_schedule_shift_activity,
-            ['shift_id', 'user_id', 'start_date', 'week_schedule_id', 'activity_code_id']
+            ['shift_id', 'user_id', 'start_date', 'week_schedule_id']
         )
 
     entity_names = ('user_schedules', )
