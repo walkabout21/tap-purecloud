@@ -496,6 +496,7 @@ def sync_management_units(api_client: ApiClient, config):
 
     # first, write out the units
     mgmt_units = stream_results(gen_units, ('entities', ), lambda x: x, 'management_unit', schemas.management_unit, ['id'], True)
+    should_output_schema = True
 
     for i, unit in enumerate(mgmt_units):
         logger.info("Syncing mgmt unit {} of {}".format(i + 1, len(mgmt_units)))
@@ -519,10 +520,11 @@ def sync_management_units(api_client: ApiClient, config):
             continue
 
         user_ids = [user['user_id'] for user in users]
-        sync_user_schedules(api_instance, config, unit_id, user_ids, first_page)
+        sync_user_schedules(api_instance, config, unit_id, user_ids, should_output_schema)
 
         unit_users = get_user_unit_mapping(users)
-        sync_historical_adherence(api_instance, config, unit_id, unit_users[unit_id], first_page)
+        sync_historical_adherence(api_instance, config, unit_id, unit_users[unit_id], should_output_schema)
+        should_output_schema = False
 
 
 def sync_conversations(api_client: ApiClient, config):
