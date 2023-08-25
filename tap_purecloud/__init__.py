@@ -496,6 +496,8 @@ def sync_management_units(api_client: ApiClient, config):
 
     # first, write out the units
     mgmt_units = stream_results(gen_units, ('entities', ), lambda x: x, 'management_unit', schemas.management_unit, ['id'], True)
+    # first records may not be on first page, use separate variable to track the first time we have users and records 
+    # for either historical_adherence or user_schedules schemas to ensure schema is properly outputted before records
     should_output_schema = True
 
     for i, unit in enumerate(mgmt_units):
